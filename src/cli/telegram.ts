@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { EXPLORER } from "../config.ts";
 import { openDb, type DB } from "../db.ts";
 import { loadModel, scoreRecent, type Scored } from "../score.ts";
@@ -97,6 +99,45 @@ async function send(chatId: number, text: string, buttons?: Button[]): Promise<b
 }
 
 /**
+ * The mark, sent once and then referred to by id.
+ *
+ * Telegram answers an upload with a `file_id` standing for the copy now on their side, so the image
+ * crosses the wire once for the life of the process rather than once per `/start`. The id is dropped
+ * if it ever stops working, which is what a restart of their end looks like from here.
+ *
+ * Every failure falls through to the text. A chat that cannot be shown the picture still gets the
+ * words, because the words are the part that matters and a missing file is not a reason to answer
+ * nothing at all.
+ */
+const BANNER = join(import.meta.dirname, "..", "..", "docs", "img", "banner.png");
+let bannerId: string | null = null;
+
+async function sendBanner(chatId: number, caption: string): Promise<boolean> {
+  if (bannerId) {
+    const again = await tg("sendPhoto", { chat_id: chatId, photo: bannerId, caption, parse_mode: "HTML" });
+    if (again) return true;
+    bannerId = null;
+  }
+  if (!existsSync(BANNER)) return send(chatId, caption);
+  try {
+    const form = new FormData();
+    form.set("chat_id", String(chatId));
+    form.set("caption", caption);
+    form.set("parse_mode", "HTML");
+    form.set("photo", new Blob([readFileSync(BANNER)], { type: "image/png" }), "augur.png");
+    const res = await fetch(`${API}/sendPhoto`, { method: "POST", body: form, signal: AbortSignal.timeout(60_000) });
+    const j = await res.json() as { ok: boolean; result?: { photo?: Array<{ file_id: string }> } };
+    if (!j.ok) return send(chatId, caption);
+    // The largest of the sizes Telegram made, so a later send is the picture and not a thumbnail.
+    const sizes = j.result?.photo ?? [];
+    bannerId = sizes.length ? sizes[sizes.length - 1].file_id : null;
+    return true;
+  } catch {
+    return send(chatId, caption);
+  }
+}
+
+/**
  * The links that belong under a launch, as buttons rather than as text.
  *
  * A reader who wants to act on an alert wants one tap, not a link buried in a paragraph they have to
@@ -145,6 +186,12 @@ async function handle(chatId: number, text: string): Promise<void> {
 
   switch (name) {
     case "/start":
+      subscribe(chatId, DEFAULT_MIN);
+      // One line, because Telegram caps a photo's caption at 1024 characters and HELP is 1,184.
+      // The rest follows as its own message rather than being cut to fit.
+      await sendBanner(chatId, "<b>Augur</b> · every pons v2 launch, scored the second it lands.");
+      await send(chatId, `${HELP}\n\nAlerts are on at <b>${DEFAULT_MIN}%</b>. Change it with /watch.`);
+      return;
     case "/help":
       subscribe(chatId, DEFAULT_MIN);
       await send(chatId, `${HELP}\n\nAlerts are on at <b>${DEFAULT_MIN}%</b>. Change it with /watch.`);
