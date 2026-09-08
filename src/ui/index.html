@@ -1,0 +1,1859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Short on purpose. A tab shows a dozen characters before it truncates, so the name has to be the
+     name; the sentence that explains it belongs in the preview tags below, where it is read whole. -->
+<title>Augur</title>
+<!-- Cut from the mark by `npm run icon`. Serving the full mark here means a megabyte fetched to
+     draw something 32 pixels across, on every visit. -->
+<link rel="icon" type="image/png" sizes="64x64" href="/icon-64.png">
+<link rel="icon" type="image/png" sizes="128x128" href="/icon-128.png">
+<link rel="apple-touch-icon" href="/icon-128.png">
+
+<!-- What a chat app, a timeline or a Slack channel shows instead of a bare URL. The absolute URLs
+     are filled in from the request, because whoever fetches this is not on our host. -->
+<meta name="description" content="Every new pons launch on Robinhood Chain, ranked by its chance of reaching the pool, with the facts behind each number. About two launches in a hundred graduate; the top tenth of this list runs nearer eight.">
+<link rel="canonical" href="__BASE__/">
+
+<meta property="og:site_name" content="Augur">
+<meta property="og:type" content="website">
+<meta property="og:url" content="__BASE__/">
+<meta property="og:title" content="Which pons launches reach the pool">
+<meta property="og:description" content="Every new pons launch ranked by its chance of reaching the pool, with the facts behind each number. Two in a hundred graduate; the top tenth of this list runs nearer eight. It writes down every score before the outcome exists, so the record can be checked.">
+<meta property="og:image" content="__BASE__/og.png">
+<meta property="og:image:alt" content="Augur">
+
+<meta name="twitter:card" content="__TWITTER_CARD__">
+<meta name="twitter:title" content="Which pons launches reach the pool">
+<meta name="twitter:description" content="Every new pons launch ranked by its chance of reaching the pool, with the facts behind each number. It writes down every score before the outcome exists.">
+<meta name="twitter:image" content="__BASE__/og.png">
+<meta name="theme-color" content="#0b0c09">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0c09;--bg2:#0e0f0b;--bg3:#050603;--ink:#e8eadf;--lime:#ccff00;--lime2:#e4ff66;--red:#ff6b57;--amber:#e8b83a;--green:#7ee787;
+  --l04:rgba(255,255,255,.04);--l05:rgba(255,255,255,.05);--l06:rgba(255,255,255,.06);--l07:rgba(255,255,255,.07);--l08:rgba(255,255,255,.08);
+  --l10:rgba(255,255,255,.1);--l12:rgba(255,255,255,.12);--l14:rgba(255,255,255,.14);--l15:rgba(255,255,255,.15);--l18:rgba(255,255,255,.18);
+  --t35:rgba(255,255,255,.35);--t4:rgba(255,255,255,.4);--t45:rgba(255,255,255,.45);--t5:rgba(255,255,255,.5);--t55:rgba(255,255,255,.55);
+  --t6:rgba(255,255,255,.6);--t65:rgba(255,255,255,.65);--t7:rgba(255,255,255,.7);--t75:rgba(255,255,255,.75);--t8:rgba(255,255,255,.8);
+  --mono:'Geist Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Geist,system-ui,sans-serif;font-size:14px}
+/**
+ * Hover is scoped to plain links on purpose. `a:hover{color}` outranks a class rule, so it used to
+ * repaint every anchor-shaped component too: lime text on a lime button, and a whole card turning
+ * lime because its wrapper happens to be a link. Components below state their own hover.
+ */
+a{color:var(--lime);text-decoration:none;transition:color .12s,background .12s,border-color .12s}
+a:not(.btn):not(.brand):not(.shot):not(.tokencard):hover{color:var(--lime2)}
+code,.mono{font-family:var(--mono)}
+button{font-family:inherit;border:0;background:none;color:inherit;cursor:pointer;padding:0}
+@keyframes ps-flash{0%{background:rgba(204,255,0,.5)}100%{background:rgba(204,255,0,0)}}
+@keyframes ps-in{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes ps-pulse{0%,100%{box-shadow:0 0 0 0 rgba(204,255,0,0)}50%{box-shadow:0 0 0 3px rgba(204,255,0,.25)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important}}
+.app{min-height:100vh;display:flex;flex-direction:column}
+[hidden]{display:none!important}
+
+/* ── nav ── */
+.nav{height:56px;display:flex;align-items:center;padding:0 40px;gap:28px;border-bottom:1px solid var(--l10);flex:none;position:sticky;top:0;background:var(--bg);z-index:5}
+.brand{display:flex;align-items:center;gap:12px;cursor:pointer;color:var(--ink)}
+.mark{width:22px;height:22px;background:var(--lime);border-radius:5px 5px 12px 5px}
+/* The artwork carries its own black ground and fine detail, so it gets no rounding, no
+   tint, and a little more room than the plain square it replaces. */
+.mark.img{width:40px;height:40px;background:none;border-radius:0;object-fit:contain}
+.brand b{font-size:19px;letter-spacing:-.02em}
+.links{display:flex;gap:26px;font-size:16px;align-self:stretch;align-items:stretch}
+.links a{display:flex;align-items:center;cursor:pointer;padding-top:2px;color:var(--t65);border-bottom:2px solid transparent;white-space:nowrap}
+.links a.on{color:var(--ink);border-bottom-color:var(--lime)}
+.spacer{flex:1}
+.live{display:flex;align-items:center;gap:8px;font:500 11px var(--mono);color:var(--t55);white-space:nowrap}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:ps-pulse 1.6s infinite;flex:none}
+.live.warn .dot{background:var(--amber);animation:none}.live.bad .dot{background:var(--red);animation:none}
+.btn{padding:9px 16px;border-radius:6px;background:var(--lime);color:#111;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1;border:1px solid var(--lime)}
+.btn:hover{background:var(--lime2);border-color:var(--lime2);color:#111}
+.btn:active{background:#b8e600;border-color:#b8e600}
+/* Below the desktop width the bar has to give somewhere. The links scroll rather than wrap, so the
+   bar stays one row and every destination is still reachable; the status pill keeps its dot, which
+   is the part that carries meaning, and lets the block and model detail truncate. */
+@media (max-width:1100px){
+  .nav{padding:0 20px;gap:16px}
+  .links{gap:16px;font-size:15px;min-width:0;overflow-x:auto;scrollbar-width:none}
+  .links::-webkit-scrollbar{display:none}
+  .nav .live{min-width:0}
+  .nav .live #livetxt{overflow:hidden;text-overflow:ellipsis}
+}
+@media (max-width:720px){
+  .nav{padding:0 14px}
+  .nav .live{display:none}
+  .brand b{font-size:17px}
+}
+.btn:focus-visible{outline:2px solid var(--lime2);outline-offset:2px}
+.btn.ghost{background:transparent;border-color:rgba(255,255,255,.2);color:var(--ink);font-weight:500;font-family:var(--mono)}
+.btn.ghost:hover{background:var(--l07);border-color:rgba(204,255,0,.4);color:var(--ink)}
+/**
+ * Named `btn-lg`, not `btn big`. `.big` is the card's stat tile, which sets a fixed 76px height and
+ * a column layout; a button carrying both classes inherited the tile's height and stood twice as
+ * tall as its own text. A one-word modifier cannot collide with another component's base class.
+ */
+.btn-lg{padding:14px 22px;border-radius:7px;font-size:14px}
+.brand:hover{color:var(--ink)}
+.brand:hover .mark{background:var(--lime2)}
+.brand:hover .mark.img{background:none;opacity:.85}
+.links a:hover{color:var(--ink)}
+.shot:hover{color:var(--ink);border-color:rgba(204,255,0,.35)}
+.tokencard:hover{color:var(--ink);border-color:rgba(204,255,0,.75)}
+.soc a:hover{color:var(--lime);border-color:rgba(204,255,0,.5)}
+
+/* ── home ── */
+.wrap{max-width:1280px;margin:0 auto;padding:0 40px}
+.hero{display:grid;grid-template-columns:1fr 1fr;gap:48px;padding:72px 0 56px;align-items:center}
+.eyebrow{font:500 11px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--lime)}
+h1{font:700 56px/1.02 Geist,sans-serif;letter-spacing:-.035em;margin:18px 0 0;text-wrap:balance}
+.ctas{display:flex;gap:12px;margin-top:32px}
+.kpis{display:flex;gap:28px;margin-top:40px;font-size:12.5px;color:var(--t55)}
+.kpis b{display:block;font:600 22px var(--mono);color:var(--ink);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.shot{border:1px solid var(--l12);border-radius:10px;overflow:hidden;background:var(--bg2);box-shadow:0 30px 80px rgba(0,0,0,.5);cursor:pointer;display:block;color:var(--ink)}
+.shot-bar{height:36px;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid var(--l08);font:500 10.5px var(--mono);color:var(--t45)}
+.shot-bar i{width:8px;height:8px;border-radius:50%;background:var(--l15);display:inline-block}
+.shot-head,.shot-row{display:grid;grid-template-columns:64px 1fr 48px 48px;gap:0 10px;padding:0 14px;align-items:center;border-bottom:1px solid var(--l06)}
+.shot-head{height:28px;font:500 9.5px var(--mono);color:var(--t4);text-transform:uppercase;letter-spacing:.06em}
+.shot-row{height:44px}
+/* Shown until the first feed answers. The panel is the largest thing on the page, and an empty
+   frame under a live-looking title bar reads as broken rather than as loading. */
+.shot-skel{height:44px;display:grid;grid-template-columns:64px 1fr 48px 48px;gap:0 10px;padding:0 14px;
+  align-items:center;border-bottom:1px solid var(--l06)}
+.shot-skel i{display:block;height:9px;border-radius:3px;background:var(--l08);animation:skel 1.4s ease-in-out infinite}
+.shot-skel i.w{width:70%}
+.shot-skel i.n{width:46%}
+.shot-skel i.s{width:60%;justify-self:end}
+@keyframes skel{0%,100%{opacity:.35}50%{opacity:.75}}
+/* The model page holds two panes that stay empty while their figures are being made. An empty
+   bordered box under a heading reads as a page that failed, not one that is working. */
+.rowskel{display:flex;align-items:center;gap:10px;height:26px}
+.rowskel i{display:block;height:9px;border-radius:3px;background:var(--l08);animation:skel 1.4s ease-in-out infinite}
+.rowskel i:first-child{width:34%}
+.rowskel i:last-child{flex:1}
+.shot-row .p{font:600 14px var(--mono)}
+.shot-row .nm{display:flex;gap:6px;align-items:baseline;font-size:12.5px;min-width:0}
+.shot-row .nm span{color:var(--t4);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shot-row .r1{display:block;font-size:10.5px;color:var(--t5);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shot-row .rk{font:500 11px var(--mono);text-align:right;color:var(--t6)}
+.shot-row .ag{font:500 11px var(--mono);text-align:right;color:var(--t45)}
+.tokencard{border:1px solid rgba(204,255,0,.45);border-radius:12px;background:linear-gradient(180deg,rgba(204,255,0,.08),rgba(204,255,0,.02));padding:28px 32px;display:grid;grid-template-columns:1fr auto;gap:32px;align-items:center;cursor:pointer;color:var(--ink)}
+.tokencard .hd{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.coin{width:32px;height:32px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;color:#111;font:700 12px var(--mono)}
+.coin.img{width:auto;height:36px;border-radius:0;background:none;object-fit:contain}
+.pill{font:500 11px var(--mono);padding:3px 8px;border-radius:4px;background:var(--lime);color:#111}
+.contract{margin-top:16px;display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--l14);border-radius:8px;padding:12px 14px;font:500 14px var(--mono);min-width:0}
+.contract .addr{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.contract .k{color:var(--t45)}
+.tiles{display:grid;grid-template-columns:repeat(2,140px);gap:10px}
+.tile{border:1px solid var(--l12);border-radius:8px;padding:12px 14px;background:var(--bg)}
+.tile .k{font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--t45)}
+.tile .v{font:600 18px var(--mono);margin-top:6px}
+.tile .s{font-size:11px;color:var(--t5);margin-top:3px}
+/**
+ * Three steps of one pipeline, so they are numbered and joined by arrows: the order is the content,
+ * not decoration. The oversized numeral sits behind the text as the block's own weight — with the
+ * small print gone the headings had nothing holding them to the page.
+ */
+.how{display:grid;grid-template-columns:1fr 24px 1fr 24px 1fr;gap:0;padding:64px 0 0;align-items:stretch}
+.step{position:relative;overflow:hidden;border:1px solid var(--l12);border-radius:10px;background:linear-gradient(160deg,rgba(204,255,0,.045),rgba(204,255,0,0) 60%);padding:26px 28px 30px;display:flex;flex-direction:column;justify-content:flex-end;min-height:168px;transition:border-color .15s,background .15s}
+.step:hover{border-color:rgba(204,255,0,.4);background:linear-gradient(160deg,rgba(204,255,0,.09),rgba(204,255,0,0) 65%)}
+.step .num{position:absolute;top:-12px;right:14px;font:700 88px/1 var(--mono);color:rgba(204,255,0,.09);letter-spacing:-.05em;pointer-events:none;user-select:none}
+.step .lbl{font:500 10.5px var(--mono);text-transform:uppercase;letter-spacing:.14em;color:var(--lime);position:relative}
+.step .t{font:600 21px/1.25 Geist,sans-serif;letter-spacing:-.02em;margin-top:12px;position:relative;text-wrap:balance}
+.how .join{display:flex;align-items:center;justify-content:center;color:rgba(204,255,0,.45);font:600 15px var(--mono)}
+.two{margin:48px 0 0;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.box{border:1px solid var(--l12);border-radius:10px;padding:22px 24px}
+.box .hd{display:flex;justify-content:space-between;align-items:center}
+.box b{font-size:15px}
+.box .sub{font:500 11px var(--mono);color:var(--t5)}
+.term{margin-top:14px;background:var(--bg3);border-radius:7px;padding:10px 8px 10px 16px;font:12.5px/1.8 var(--mono);color:var(--t75)}
+.term .d{color:var(--t35)}.term .c{color:var(--lime)}
+.cmd{display:grid;grid-template-columns:minmax(0,1fr) 62px;gap:8px;align-items:start;border-radius:4px;padding:1px 6px 1px 0;margin:0 -6px 0 0}
+.cmd:hover{background:rgba(204,255,0,.06)}
+.cmd .txt{min-width:0;overflow-wrap:anywhere}
+.cmd .cp{opacity:0;justify-self:end;align-self:center;font:500 10.5px var(--mono);color:var(--t5);border:1px solid var(--l12);border-radius:4px;padding:2px 7px;background:var(--bg2);white-space:nowrap;transition:opacity .12s,color .12s,border-color .12s}
+.cmd:hover .cp,.cmd .cp:focus-visible{opacity:1}
+.cmd .cp:hover{color:var(--lime);border-color:rgba(204,255,0,.45)}
+.cmd .cp.done{opacity:1;color:#111;background:var(--lime);border-color:var(--lime)}
+.copyall{font:500 10.5px var(--mono);color:var(--t5);border:1px solid var(--l12);border-radius:4px;padding:3px 9px;background:transparent;white-space:nowrap;transition:color .12s,border-color .12s,background .12s}
+.copyall:hover{color:var(--lime);border-color:rgba(204,255,0,.45)}
+.copyall.done{color:#111;background:var(--lime);border-color:var(--lime)}
+.box .hd .right{display:flex;align-items:center;gap:12px}
+.keys{margin-top:18px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;font-size:12px}
+.keys div{background:var(--l05);border-radius:6px;padding:10px 12px}
+.keys b{display:block;font:600 16px var(--mono)}
+.keys span{color:var(--t5);margin-top:3px;display:block}
+/* The footer. Four columns on desktop, stacking to two and then one, and hidden on the board, which
+   locks the document scroll and fills the viewport. */
+.ft{margin-top:64px;border-top:1px solid var(--l08);background:var(--bg)}
+.ft.off{display:none}
+.ftin{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1.4fr);gap:40px;padding-top:38px;padding-bottom:32px;align-items:start}
+.ftlogo{display:flex;align-items:center;gap:10px;color:var(--ink)}
+.ftlogo b{font-size:17px;letter-spacing:-.02em}
+.ftbrand p{margin:14px 0 0;font-size:12.5px;line-height:1.6;color:var(--t45);max-width:34ch}
+.ftcol h4{margin:0 0 14px;font:500 10.5px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--t45)}
+.ftcol a{display:block;padding:5px 0;font-size:13.5px;color:var(--t65);cursor:pointer}
+.ftcol a:hover{color:var(--ink)}
+.ftaddr{border:1px solid var(--l14);border-radius:8px;background:var(--bg2);padding:11px 13px;font:500 12px var(--mono);color:var(--t65);overflow-wrap:anywhere}
+.ftlink{display:inline-block;margin-top:10px;font-size:13px;color:var(--lime)}
+.ftwarn{margin:12px 0 0;font:11.5px var(--mono);line-height:1.5;color:var(--t35)}
+.ftbar{display:flex;justify-content:space-between;align-items:center;gap:16px;padding-top:16px;padding-bottom:26px;border-top:1px solid var(--l06);font:11.5px var(--mono);color:var(--t35)}
+.ftstat{display:flex;align-items:center;gap:7px}
+@media (max-width:900px){.ftin{grid-template-columns:1fr 1fr;gap:32px}}
+@media (max-width:560px){.ftin{grid-template-columns:1fr}.ftbar{flex-direction:column;align-items:flex-start;gap:8px}}
+
+/* ── board ── */
+/* The one page with a hard width requirement: 620 for the list, 6 for the handle, 400 for the
+   card, and no useful way to show that in less. It carries the minimum itself and scrolls
+   sideways below it. This used to live on `body`, where it pinned all eight pages to the
+   widest one and left every narrow screen scrolling horizontally through prose. */
+.board{flex:1;display:grid;grid-template-columns:minmax(620px,1fr) 6px var(--panelW,400px);min-height:0;min-width:1040px;height:calc(100vh - 56px)}
+.board.dragging{user-select:none}
+.list{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--l10);min-height:0}
+.lhead{display:flex;align-items:center;gap:10px;padding:0 24px;height:52px;border-bottom:1px solid var(--l08);flex:none}
+.lhead b{font-weight:600;font-size:15px;white-space:nowrap}
+.lhead .m{font:12px var(--mono);color:var(--t5);white-space:nowrap}
+.lhead .live{margin-left:6px;font-size:10.5px;color:var(--lime)}
+.stale{display:none;padding:8px 24px;font:500 12px var(--mono);border-bottom:1px solid var(--l08)}
+.stale.warn{display:block;color:var(--amber);background:rgba(232,184,58,.08)}
+.stale.bad{display:block;color:var(--red);background:rgba(255,107,87,.1)}
+.filters{display:flex;align-items:center;gap:6px;padding:0 24px;height:40px;border-bottom:1px solid var(--l08);flex:none;font-size:11.5px;white-space:nowrap;overflow:hidden}
+.f{padding:5px 10px;border-radius:4px;cursor:pointer;border:1px solid var(--l15);color:var(--ink)}
+.f.on{background:var(--lime);color:#111;border-color:var(--lime);font-weight:600}
+.f.mono{font:500 11px var(--mono)}
+.shown{font:11px var(--mono);color:var(--t4);margin-left:8px}
+/* pages that are read rather than operated: a measured column, not a dashboard */
+.doc{max-width:1180px;margin:0 auto;padding:44px 24px 88px}
+.doc h1{margin:0;font:700 44px/1 Geist,sans-serif;letter-spacing:-.035em}
+.doc .sub{margin-top:10px;font-size:14px;color:var(--t55)}
+.doc .cols2{display:grid;grid-template-columns:minmax(0,680px) minmax(0,1fr);gap:44px;margin-top:34px;align-items:start}
+/* Stacked at 1100 rather than 900: the main column is a fixed 680, so everything below about
+   1100 goes to the sidebar, and by 1005 it is a 200px strip breaking endpoints one character
+   at a time. Full width and underneath is the readable arrangement. */
+@media (max-width:1100px){.doc .cols2{grid-template-columns:1fr}}
+.prose{font-size:14.5px;line-height:1.65;color:var(--t78)}
+.prose p{margin:14px 0 0;text-wrap:pretty}
+.prose h2{margin:40px 0 0;font:700 22px Geist,sans-serif;letter-spacing:-.025em;color:var(--ink);display:flex;align-items:center;gap:12px}
+.prose h2 .n{font:500 12px var(--mono);color:var(--lime)}
+.prose h2 .n.red{color:var(--red)}
+.never{margin-top:14px;display:flex;flex-direction:column;gap:8px}
+.never div{display:grid;grid-template-columns:16px 1fr;gap:10px}
+.never i{font:600 14px var(--mono);color:var(--red);font-style:normal}
+/* milestones: status is the point, so it carries the colour */
+/* the roadmap header strip: what this page is, and where it has got to */
+.rmbar{display:flex;align-items:center;gap:14px;padding:14px 20px;border:1px solid var(--l08);border-bottom:0;border-radius:10px 10px 0 0;background:var(--bg2);font:11.5px var(--mono);color:var(--t45)}
+.rmbar b{font:600 13px Geist,sans-serif;color:var(--ink);letter-spacing:-.01em}
+.rmbar .sp{margin-left:auto;display:flex;align-items:center;gap:7px;color:var(--lime)}
+.rmbar .sp .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:pulse 2s infinite}
+.rmwrap{border:1px solid var(--l08);border-radius:0 0 10px 10px;background:var(--bg2);padding:30px 28px 26px}
+/* One line, marks sitting on it, captions alternating above and below so five of them fit without
+   colliding. The stage's height is set from JS once the captions can be measured, not fixed here. */
+.rmwrap h1{margin:0}
+.rmwrap .sub{margin:10px 0 36px}
+.tl{position:relative}
+.tl .line,.tl .fill{position:absolute;left:0;height:2px}
+.tl .line{right:0;background:var(--l15)}
+.tl .fill{background:var(--lime)}
+/* The mark is drawn on the stage rather than inside a caption, so the upper captions can hang from
+   the rule and grow upward away from it. The stage's height and the rule's position are measured
+   from the captions once they exist: fixing them in CSS left a dead band above the short ones and
+   would have clipped a long one. */
+.tl .mk{position:absolute;width:14px;height:14px;border-radius:3px;border:2px solid var(--bg2);box-shadow:0 0 0 2px currentColor;background:currentColor}
+.tl .m{position:absolute;width:min(190px,17%)}
+.tl .tag{font:500 10.5px var(--mono);text-transform:uppercase;letter-spacing:.08em}
+.tl .ti{font-weight:600;font-size:16px;margin-top:5px;letter-spacing:-.01em;color:var(--ink)}
+.tl .de{font-size:12px;line-height:1.5;color:var(--t55);margin-top:5px;text-wrap:pretty}
+.tl .done{color:var(--lime)}
+.tl .now{color:var(--amber)}
+.tl .next{color:var(--t35)}
+.tl .next .ti{color:var(--t65)}
+.tl .now.mk{animation:pulse 2s infinite}
+@media (max-width:1000px){
+  .rmwrap{padding:18px}
+  .tl{height:auto!important;display:flex;flex-direction:column;gap:16px}
+  .tl .line,.tl .fill,.tl .mk{display:none}
+  .tl .m{position:static!important;width:auto;padding-left:12px;border-left:2px solid currentColor}
+}
+.ship{display:flex;flex-direction:column}
+.ship .r{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:9px;align-items:baseline;padding:7px 0;border-top:1px solid var(--l06);font-size:12.5px}
+.ship .r:first-child{border-top:0}
+.ship .r i{font-style:normal;font:600 12px var(--mono);color:var(--lime)}
+.ship .r.no i{color:var(--t35)}
+.ship .r span{font:11px var(--mono);color:var(--t45);text-align:right}
+.ship .r.no b{color:var(--t55);font-weight:400}
+.miles{display:flex;flex-direction:column;gap:10px;margin-top:28px}
+.mile{display:grid;grid-template-columns:96px minmax(0,1fr);gap:16px;padding:14px 16px;border:1px solid var(--l08);border-radius:8px;background:var(--bg2)}
+.mile .tag{font:600 10px var(--mono);text-transform:uppercase;letter-spacing:.08em;align-self:start;padding:4px 7px;border-radius:4px;text-align:center}
+.mile .tag.done{background:rgba(204,255,0,.14);color:var(--lime)}
+.mile .tag.now{background:rgba(232,184,58,.14);color:var(--amber)}
+.mile .tag.next{background:var(--l06);color:var(--t55)}
+.mile b{display:block;font-size:14px;letter-spacing:-.01em}
+.mile span{display:block;margin-top:4px;font-size:13px;color:var(--t55);line-height:1.5}
+.side{border:1px solid var(--l08);border-radius:10px;background:var(--bg2);padding:18px 20px}
+.side h3{margin:0 0 12px;font:600 11px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--t45)}
+.side .row2{display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid var(--l06);font-size:12.5px}
+.side .row2:first-of-type{border-top:0}
+.side .row2 b{font-weight:600}
+.side .row2 span{color:var(--t45);font:11.5px var(--mono);text-align:right}
+/* a step with a command under it */
+.steps{display:flex;flex-direction:column;gap:14px;margin-top:28px}
+.stp{border:1px solid var(--l08);border-radius:10px;background:var(--bg2);padding:16px 18px}
+.stp .hd{display:flex;align-items:baseline;gap:10px}
+.stp .hd .n{font:500 11px var(--mono);color:var(--lime)}
+.stp .hd b{font-size:14px}
+.stp .hd .t{margin-left:auto;font:11px var(--mono);color:var(--t35)}
+.stp .d{margin-top:6px;font-size:13px;color:var(--t55);line-height:1.5}
+.cmd{margin-top:10px;display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--l08);border-radius:7px;padding:9px 12px;font:500 12.5px var(--mono)}
+.cmd .p{color:var(--t35)}
+.cmd code{flex:1;color:var(--ink);overflow-x:auto;white-space:nowrap}
+.cmd button{border:1px solid var(--l15);background:transparent;color:var(--t55);border-radius:5px;padding:3px 8px;font:500 10.5px var(--mono);cursor:pointer;flex:none}
+.cmd button:hover{color:var(--lime);border-color:var(--lime)}
+.envt{width:100%;border-collapse:collapse;margin-top:14px;font:12px var(--mono)}
+.envt th{text-align:left;font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--t45);padding:0 10px 8px 0;border-bottom:1px solid var(--l08)}
+.envt td{padding:8px 10px 8px 0;border-bottom:1px solid var(--l06);vertical-align:top}
+.envt td.k{color:var(--lime);white-space:nowrap}
+.envt td.v{color:var(--ink);white-space:nowrap}
+/* An endpoint is one long token, and nowrap makes the table wider than the sidebar holding it
+   rather than wider than itself. Below the desktop width it wraps instead of pushing the page. */
+@media (max-width:520px){.envt td.v{white-space:normal;overflow-wrap:anywhere}}
+.envt td.d{color:var(--t55);font-family:Geist,sans-serif;font-size:12.5px;line-height:1.45}
+/* the honest banner for a page describing something that does not exist yet */
+/* The coin page splits the other way round from the reading pages: the chart wants the width and
+   the side card is a fixed rail, where a document wants a measured column of prose and whatever is
+   left. Sharing one rule had the chart at 58% of the page and the rail at 34%. */
+.coincols{display:grid;grid-template-columns:minmax(0,1fr) 350px;gap:36px;margin-top:26px;align-items:start}
+@media (max-width:1040px){.coincols{grid-template-columns:1fr}}
+.tf{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--l08);border-radius:7px;background:var(--bg2)}
+.tf button{border:0;background:transparent;color:var(--t55);border-radius:5px;padding:4px 11px;font:600 11px var(--mono);cursor:pointer}
+.tf button.on{background:var(--lime);color:#111}
+.tf button:hover:not(.on){color:var(--ink)}
+.coinhd{display:flex;align-items:center;gap:10px;font:11px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--t45)}
+.coinhd .st{margin-left:auto;display:flex;align-items:center;gap:7px;color:var(--lime)}
+.coinhd .st .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:pulse 2s infinite}
+.coinpx{margin-top:16px;display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.coinpx b{font:700 44px var(--mono);letter-spacing:-.02em;color:var(--ink)}
+.coinpx .ch{font:600 15px var(--mono)}
+.coinpx .ch.up{color:var(--lime)}.coinpx .ch.dn{color:var(--red)}
+.coinpx .w{font:12px var(--mono);color:var(--t45)}
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));border:1px solid var(--l08);border-radius:9px;margin-top:24px;overflow:hidden}
+.strip > div{padding:11px 14px;border-left:1px solid var(--l08)}
+.strip > div:first-child{border-left:0}
+.strip .k{font:500 9px var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--t45);line-height:1.2}
+.strip .v{margin-top:4px;font:600 14px var(--mono);color:var(--ink);line-height:1.2}
+.strip .v.dim{color:var(--t35);font-weight:500;font-size:12px}
+.chartbar{display:flex;align-items:center;gap:12px;margin-top:26px;font:11px var(--mono);color:var(--t45)}
+.chartbar .src{margin-left:auto}
+.chart{margin-top:10px;border:1px solid var(--l08);border-radius:9px;background:var(--bg2);padding:14px 14px 8px}
+.chart svg{display:block;width:100%;height:280px}
+.chart .ax{display:flex;justify-content:space-between;margin-top:6px;font:10.5px var(--mono);color:var(--t35)}
+.rng{display:flex;align-items:center;gap:12px;margin-top:14px;font:11px var(--mono);color:var(--t45)}
+.rng .bar{position:relative;flex:1;height:2px;background:var(--l15);border-radius:2px}
+.rng .bar i{position:absolute;top:-4px;width:10px;height:10px;border-radius:50%;background:var(--lime);transform:translateX(-5px)}
+.flow{position:relative;display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:0;margin-top:20px}
+.flow .s{position:relative;padding:0 16px 0 0}
+.flow .s .n{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border:1px solid var(--l15);border-radius:7px;background:var(--bg2);font:600 12px var(--mono);color:var(--lime)}
+.flow .s::after{content:"";position:absolute;left:38px;right:0;top:19px;height:1px;background:var(--l15)}
+.flow .s:last-child::after{display:none}
+.flow .s b{display:block;margin-top:12px;font-size:13.5px}
+.flow .s span{display:block;margin-top:3px;font-size:12px;color:var(--t55);line-height:1.45}
+.flow .s .val{display:block;margin-top:7px;font:600 12.5px var(--mono);color:var(--lime)}
+/* A heading with its aside beside it, the way the design sets them: no bullet, the qualifier in
+   mono on the same baseline rather than wrapped onto its own line. */
+.h2r{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:38px 0 0}
+.h2r h2{margin:0;font:700 20px Geist,sans-serif;letter-spacing:-.02em;color:var(--ink)}
+.h2r .q{font:11.5px var(--mono);color:var(--t45)}
+/* One rule running the width of the flow with the numbered boxes sitting on it. Drawing a segment
+   between each pair instead left four stubs that stopped short of the last step. */
+.flow2{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px}
+.flow2 .rule{position:absolute;left:22px;right:8px;top:22px;height:1px;background:var(--l15)}
+.flow2 .s{position:relative;padding-right:16px}
+.flow2 .s .n{position:relative;z-index:1;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border:1px solid var(--l15);border-radius:8px;background:var(--bg);font:600 12px var(--mono);color:var(--lime)}
+.flow2 .s b{display:block;margin-top:14px;font-size:13.5px;font-weight:600}
+.flow2 .s em{display:block;margin-top:4px;font-size:12px;color:var(--t55);line-height:1.45;font-style:normal}
+.flow2 .s .val{display:block;margin-top:8px;font:600 12.5px var(--mono);color:var(--lime)}
+@media (max-width:820px){.flow2{grid-template-columns:1fr 1fr;row-gap:22px}.flow2 .rule{display:none}}
+/* The ledger reads as a statement: when, what, how much. */
+.ldg{display:flex;flex-direction:column;margin-top:16px}
+.ldg .r{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:12px;align-items:baseline;padding:9px 0;border-top:1px solid var(--l06);font:11.5px var(--mono)}
+.ldg .r:first-child{border-top:0}
+.ldg .r .w{color:var(--t45);white-space:nowrap}
+.ldg .r .d{color:var(--t55);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ldg .r .a{color:var(--ink);font-weight:600;text-align:right;white-space:nowrap}
+.ldg .note{margin-top:14px;font:11.5px var(--mono);color:var(--t35);line-height:1.55}
+.card2{border:1px solid var(--l08);border-radius:10px;background:var(--bg2);padding:16px 18px}
+.card2 .top{display:flex;align-items:center;gap:11px}
+.card2 .top .lg{width:38px;height:38px;border-radius:9px;background:var(--lime);color:#111;display:flex;align-items:center;justify-content:center;font:700 16px Geist,sans-serif;margin:0}
+.card2 .top b{font:700 17px Geist,sans-serif;letter-spacing:-.01em}
+.card2 .top span{display:block;margin-top:2px;font:11px var(--mono);color:var(--t45)}
+.card2 .buy{display:flex;align-items:center;justify-content:center;height:44px;margin-top:14px;border-radius:999px;background:var(--lime);color:#111;font:600 13px Geist,sans-serif;text-align:center}
+.card2 .buy:hover{background:var(--lime2);color:#111}
+.card2 .lnks{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.card2 .lnks a{display:flex;align-items:center;justify-content:center;height:38px;padding:0 12px;border-radius:999px;border:1px solid var(--l15);color:var(--ink);font:500 12px var(--mono);text-align:center;white-space:nowrap}
+.card2 .lnks a:hover{border-color:var(--lime);color:var(--lime)}
+.card2 .last{display:flex;justify-content:space-between;gap:10px;margin-top:14px;padding-top:12px;border-top:1px solid var(--l06);font:11.5px var(--mono);color:var(--t45)}
+.verify{border:1px solid var(--l08);border-radius:10px;background:var(--bg2);padding:18px 20px}
+.verify .hd{display:flex;align-items:center;gap:10px}
+.verify h3{margin:0;font:600 15px Geist,sans-serif;letter-spacing:-.01em;color:var(--ink)}
+.verify .hd button{margin-left:auto;border:1px solid var(--lime);background:var(--lime);color:#111;border-radius:5px;padding:4px 10px;font:600 10.5px var(--mono);cursor:pointer}
+.verify #coin-verify{margin-top:14px}
+.verify .r{display:grid;grid-template-columns:112px minmax(0,1fr);gap:16px;padding:11px 0;border-top:1px solid var(--l06);font:11.5px var(--mono);align-items:baseline;line-height:1.55}
+.verify .r:first-child{border-top:0;padding-top:0}
+.verify .r .k{color:var(--t45)}
+.verify .r .v{color:var(--ink);overflow-wrap:anywhere}
+.verify .note{margin-top:16px;padding-top:14px;border-top:1px solid var(--l06);font:12.5px Geist,sans-serif;color:var(--t55);line-height:1.5}
+.notyet{margin-top:0;margin-bottom:26px;border:1px solid rgba(232,184,58,.35);background:rgba(232,184,58,.07);border-radius:9px;padding:14px 16px;font-size:13.5px;color:var(--ink);line-height:1.55}
+.notyet b{color:var(--amber)}
+.settings{display:flex;align-items:center;gap:16px;padding:0 24px;height:42px;border-bottom:1px solid var(--l08);flex:none;font-size:11.5px;color:var(--t45);white-space:nowrap;overflow-x:auto}
+.settings label{display:flex;align-items:center;gap:7px;flex:none}
+.settings input,.settings select{background:#0d0d0d;border:1px solid var(--l15);color:var(--ink);border-radius:4px;padding:4px 7px;font:500 11px var(--mono)}
+.settings input{width:58px}
+.settings input:focus,.settings select:focus{outline:2px solid var(--lime);outline-offset:1px;border-color:var(--lime)}
+.settings .sfoot{font:11px var(--mono);color:var(--t4);flex:none}
+.cols,.row{display:grid;grid-template-columns:52px 150px 88px 44px minmax(0,1fr) 84px 66px 56px;gap:0 12px;padding:0 24px;align-items:center}
+/* A creator with no read history reads as absent, not as zero. */
+.dv{font:500 11.5px var(--mono)}
+.dv.none{color:var(--t35)}
+.cols{height:32px;font:500 10px var(--mono);color:var(--t45);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--l08);flex:none}
+.cols .r,.row .r{text-align:right}
+.rows{overflow:auto;flex:1}
+.row{height:44px;font-size:12.5px;border-bottom:1px solid var(--l06);cursor:pointer}
+.row:hover{background:rgba(204,255,0,.07)}
+.row.top{background:rgba(204,255,0,.05);box-shadow:inset 3px 0 0 var(--lime)}
+.row.sel{background:rgba(204,255,0,.1)}
+.row.fresh{animation:ps-flash .7s ease-out forwards,ps-in .2s ease-out}
+.row .t{font:11px var(--mono);color:var(--t5);display:flex;flex-direction:column;line-height:1.2}
+.row .t i{font-style:normal;color:var(--lime);font-size:9.5px;font-weight:600;letter-spacing:.04em}
+.row .tk{display:flex;align-items:center;gap:8px;min-width:0}
+.cdot{width:20px;height:20px;border-radius:50%;flex:none}
+.row .tk b{font-weight:600}
+.row .tk .a{font:11px var(--mono);color:var(--t45);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .p{font:700 16px var(--mono);display:flex;justify-content:flex-end;align-items:center;gap:6px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.topb{font:700 9px var(--mono);padding:2px 4px;border-radius:2px;background:var(--lime);color:#111;letter-spacing:.04em;line-height:1}
+.row .rk{font:12.5px var(--mono);color:var(--t7)}
+.chips{display:flex;gap:5px;min-width:0;overflow:hidden}
+.chips span{font-size:10.5px;padding:2px 7px;border-radius:3px;background:var(--l07);white-space:nowrap;flex:none}
+/* Direction is the point of a reason, so it is on the chip rather than only in the tooltip. */
+.chips span.up{box-shadow:inset 2px 0 0 rgba(204,255,0,.55)}
+.chips span.down{box-shadow:inset 2px 0 0 rgba(255,107,87,.6)}
+.chips span.g{background:rgba(126,231,135,.15);color:var(--green);box-shadow:none}
+.row .sb{font:12.5px var(--mono)}
+.row .ag{font:11px var(--mono);color:var(--t45)}
+.empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--t4);font-size:13px;text-align:center;padding:40px}
+.divider{cursor:col-resize;background:var(--l04);border-left:1px solid var(--l10);display:flex;align-items:center;justify-content:center}
+.divider:hover,.board.dragging .divider{background:rgba(204,255,0,.35)}
+.divider i{width:2px;height:28px;border-radius:1px;background:var(--t35)}
+.panel{display:flex;flex-direction:column;overflow:hidden;font-size:12px;min-height:0;min-width:0}
+.phead{height:52px;display:flex;align-items:center;gap:10px;padding:0 20px;border-bottom:1px solid var(--l08);flex:none}
+.phead b{font-weight:600;font-size:13px;flex:none}
+.phead .nm{color:var(--t45);font-size:12px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.phead .t{font:11px var(--mono);color:var(--t5);flex:none}
+.grade{display:flex;align-items:center;gap:8px;height:30px;padding:0 10px 0 6px;border-radius:5px;border:1px solid var(--gb,var(--l15));background:var(--gbg,transparent);white-space:nowrap;flex:none}
+.grade i{width:20px;height:20px;border-radius:4px;background:var(--gc,var(--t5));color:#111;display:flex;align-items:center;justify-content:center;font:700 12px var(--mono);font-style:normal}
+.grade span{font:600 11px var(--mono);color:var(--gc,var(--t5))}
+.ptop{padding:20px 20px 16px;border-bottom:1px solid var(--l08);flex:none}
+.bigs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.big{border-radius:6px;padding:12px 14px;height:76px;display:flex;flex-direction:column;justify-content:space-between}
+.big.lime{background:var(--lime);color:#111}
+.big.line{border:1px solid rgba(204,255,0,.5)}
+.big .k{font:500 10px/1 var(--mono);text-transform:uppercase;letter-spacing:.06em;opacity:.7}
+.big.line .k{color:var(--t5);opacity:1}
+.big .v{font:600 32px/1 var(--mono);letter-spacing:-.03em;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big.line .v{color:var(--lime)}
+.big .v small{font-size:14px;letter-spacing:0;opacity:.7}
+.big.line .v{font-size:23px}
+.subline{margin-top:12px;font:11.5px var(--mono);color:var(--t5)}
+.subline b{color:var(--ink);font-weight:600}
+.reasons{display:flex;flex-direction:column;gap:8px;margin-top:16px;line-height:1.4}
+.reasons div{display:grid;grid-template-columns:12px 1fr;gap:8px}
+.reasons i{font-style:normal;font-family:var(--mono)}
+.reasons .up i{color:var(--lime)}.reasons .down i{color:var(--red)}
+.pbody{overflow:auto;flex:1}
+.fact{display:grid;grid-template-columns:112px minmax(0,1fr) 12px;gap:12px;padding:0 20px;height:36px;border-bottom:1px solid var(--l05);align-items:center}
+.fact .k{color:var(--t5)}
+.fact .v{font:11.5px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fact .v.warn{color:var(--red)}.fact .v.amb{color:var(--amber)}
+.fact a.x{font-family:var(--mono);text-align:right}
+.soc{display:grid;grid-template-columns:112px minmax(0,1fr);gap:12px;padding:0 20px;height:44px;border-bottom:1px solid var(--l05);align-items:center}
+.soc .k{color:var(--t5)}
+.soc .b{display:flex;gap:6px}
+.soc a{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:5px;border:1px solid var(--l18);color:var(--ink);font:600 11.5px Geist,sans-serif}
+.soc a b{font:700 12px var(--mono)}
+.soc .none{font:500 11.5px var(--mono);color:var(--red)}
+.sec{padding:14px 20px 12px;display:flex;align-items:center;gap:10px}
+.sec .k{font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--t45)}
+.sec .v{font:500 11px var(--mono);color:var(--t7);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sec a{font:11px var(--mono)}
+.stat3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 20px 14px}
+.stat3 div{background:var(--l05);border-radius:6px;padding:10px}
+.stat3 div.lime{background:rgba(204,255,0,.12)}
+.stat3 b{display:block;font:700 20px/1 var(--mono)}
+.stat3 div.lime b{color:var(--lime)}
+.stat3 span{font-size:11px;color:var(--t5);margin-top:4px;display:block}
+.thead .lbl{grid-column:1/3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thead .lbl i{font-style:normal;color:var(--t35);margin-left:10px}
+.thead{height:32px;display:grid;grid-template-columns:60px minmax(0,1fr) 116px 12px;gap:12px;align-items:center;padding:0 20px;font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--t45);border-bottom:1px solid var(--l08)}
+.trow{display:grid;grid-template-columns:60px minmax(0,1fr) 116px 12px;gap:12px;padding:0 20px;height:36px;border-bottom:1px solid var(--l05);align-items:center}
+.trow b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .w{color:var(--t55);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trow .o{font:600 12px var(--mono);text-align:right;white-space:nowrap}
+.trow .o.g{color:var(--lime)}.trow .o.n{color:var(--t45)}
+.trow a{font-family:var(--mono);text-align:right}
+.note{padding:0 20px 16px;font-size:12px;color:var(--t45)}
+.copy{padding:20px 20px 24px}
+.copy button{display:flex;align-items:center;justify-content:center;gap:10px;height:48px;width:100%;border-radius:8px;background:var(--lime);color:#111;font:700 14px var(--mono);letter-spacing:-.01em}
+.copy button.done{background:var(--ink)}
+.copy .full{margin-top:8px;text-align:center;font:500 11px var(--mono);color:var(--t4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.list2{padding:0 20px 8px}
+.li{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;height:32px;align-items:center;border-bottom:1px solid var(--l05);font:11.5px var(--mono)}
+.li .m{color:var(--t5);white-space:nowrap}
+.li .x{font-size:10px;padding:1px 5px;border-radius:2px;background:var(--l07);color:var(--t6);margin-left:6px}
+.li .x.g{background:rgba(126,231,135,.15);color:var(--green)}
+.li .x.r{background:rgba(255,107,87,.15);color:var(--red)}
+.li .x.l{background:rgba(204,255,0,.15);color:var(--lime)}
+
+/* ── model / token ── */
+.page{padding:32px 40px;max-width:1280px;margin:0 auto;width:100%}
+.page.narrow{max-width:1000px}
+.ph{display:flex;align-items:baseline;gap:14px}
+h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
+.ph .m{font:500 12px var(--mono);color:var(--t5)}
+.pipe{display:grid;grid-template-columns:repeat(4,1fr) 40px 1fr;gap:10px;margin-top:22px}
+.pipe .arrow{display:flex;align-items:center;justify-content:center;color:var(--lime);font:600 18px var(--mono)}
+.cell{border:1px solid var(--l12);border-radius:8px;padding:18px 20px;display:flex;flex-direction:column}
+.cell .k{font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--t45)}
+.cell .t{font-weight:600;font-size:15px;margin-top:12px;line-height:1.3;letter-spacing:-.01em}
+.cell .m{font:500 11.5px/1.45 var(--mono);color:var(--lime);margin-top:12px}
+.cell .d{font-size:11.5px;color:var(--t5);margin-top:8px;line-height:1.5}
+.cell.out{background:var(--lime);color:#111;border:0}
+.cell.out .k,.cell.out .m,.cell.out .d{color:#111;opacity:.7}.cell.out .t{font-weight:700}.cell.out .m{opacity:1}
+.metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-top:20px}
+.metric .v{font:700 30px/1 var(--mono);letter-spacing:-.03em;margin-top:12px;font-variant-numeric:tabular-nums}
+.metric .v.lime{color:var(--lime)}.metric .v.amb{color:var(--amber)}
+.metric .d{font-size:11.5px;color:var(--t5);margin-top:10px;line-height:1.45}
+.two2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
+.pane{border:1px solid var(--l10);border-radius:8px;padding:14px 16px}
+.pane .k{font:500 10.5px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--t45);margin-bottom:10px}
+.imp{display:grid;grid-template-columns:1fr 160px 40px;gap:10px;align-items:center;padding:5px 0;font-size:12px}
+.imp span:first-child{color:var(--t8)}
+.bar{height:8px;background:var(--l07);border-radius:2px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--lime)}
+.imp .n{font:600 11.5px var(--mono);text-align:right;color:var(--t7)}
+.log{font:11.5px/1.7 var(--mono);color:var(--t7)}
+.log div{display:grid;grid-template-columns:110px 1fr;gap:10px}
+.log .t{color:var(--t35)}
+.log .lime{color:var(--lime)}.log .amb{color:var(--amber)}.log .red{color:var(--red)}
+.honest{font-size:12.5px;color:var(--t5);margin:20px 0 0;line-height:1.5;max-width:760px}
+.tok-hd{display:flex;align-items:center;gap:12px}
+.tok-hd .coin{width:40px;height:40px;font-size:14px}
+.contract.lg{margin-top:18px;background:var(--bg2);padding:14px 16px;font-size:15px}
+.tiles4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+.tiles4 .tile{background:transparent;padding:14px 16px}
+.tiles4 .tile .v{font-size:20px}
+.facts{margin-top:22px;border:1px solid var(--l10);border-radius:8px}
+.facts .hd{height:36px;display:flex;align-items:center;padding:0 16px;font:500 10px var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--t45);border-bottom:1px solid var(--l08)}
+.facts .fact{grid-template-columns:180px minmax(0,1fr) 12px;padding:0 16px;height:38px;font-size:12.5px}
+.facts .fact .v{font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<nav class="nav">
+  <a class="brand" href="#/"><span class="mark" id="mark"></span><img class="mark img" src="/logo.png" alt="" onload="document.getElementById('mark').remove()" onerror="this.remove()"><b>Augur</b></a>
+  <div class="links">
+    <a href="#/board" data-nav="board">Board</a>
+    <a href="#/model" data-nav="model">Model</a>
+    <a href="#/token" data-nav="token">$AUGUR</a>
+    <a href="#/roadmap" data-nav="roadmap">Roadmap</a>
+    <a href="#/run" data-nav="run">Run it</a>
+    <a href="https://github.com/kingwilliamAI/Augur#readme" target="_blank" rel="noopener">Docs</a>
+    <a href="https://github.com/kingwilliamAI/Augur" target="_blank" rel="noopener">GitHub</a>
+  </div>
+  <div class="spacer"></div>
+  <div class="live" id="livepill"><span class="dot"></span><span id="livetxt">connecting…</span></div>
+  <a class="btn" href="#/board">Open board</a>
+</nav>
+
+<!-- ───────────── HOME ───────────── -->
+<section id="page-home">
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <div class="eyebrow">Open source · MIT · runs on your machine</div>
+        <h1>Every pons launch, scored the second it lands.</h1>
+        <div class="ctas">
+          <a class="btn btn-lg" href="#/board">Open the live board</a>
+          <a class="btn btn-lg ghost" href="https://github.com/kingwilliamAI/Augur" target="_blank" rel="noopener" title="Open the repository">git clone · npm run setup · npm run board</a>
+        </div>
+        <div class="kpis">
+          <div><b id="k-base">—</b>base graduation rate</div>
+          <div><b id="k-median">—</b>median time to graduate</div>
+          <div><b id="k-lift">—</b>top-decile lift vs base</div>
+          <div><b>0</b>keys needed</div>
+        </div>
+      </div>
+      <a class="shot" href="#/board">
+        <div class="shot-bar"><i></i><i></i><i></i><span style="margin-left:8px">localhost:4663 · live</span></div>
+        <div class="shot-head"><span>Grad</span><span>Launch</span><span style="text-align:right">Rank</span><span style="text-align:right">Age</span></div>
+        <div id="hero-rows"><div class="shot-skel"><i class="w"></i><i class="n"></i><i class="s"></i><i class="s"></i></div><div class="shot-skel"><i class="w"></i><i class="n"></i><i class="s"></i><i class="s"></i></div><div class="shot-skel"><i class="w"></i><i class="n"></i><i class="s"></i><i class="s"></i></div><div class="shot-skel"><i class="w"></i><i class="n"></i><i class="s"></i><i class="s"></i></div><div class="shot-skel"><i class="w"></i><i class="n"></i><i class="s"></i><i class="s"></i></div><div class="shot-skel"><i class="w"></i><i class="n"></i><i class="s"></i><i class="s"></i></div><div class="shot-skel"><i class="w"></i><i class="n"></i><i class="s"></i><i class="s"></i></div></div>
+      </a>
+    </div>
+
+    <a class="tokencard" href="#/token">
+      <div style="min-width:0">
+        <div class="hd"><img class="coin img" src="/icon-128.png" alt=""><b style="font-size:20px;letter-spacing:-.02em">$AUGUR</b><span class="pill">pons v2 · Robinhood Chain</span><span style="font:500 11px var(--mono);color:var(--t55)">not launched yet</span></div>
+        <div class="contract"><span class="k">contract</span><span class="addr" style="color:var(--t45)">no address published. Anything claiming to be $AUGUR before one appears here is not ours</span></div>
+        <div style="margin-top:12px;font-size:12.5px;color:var(--t6);line-height:1.5">When it launches it will go through the same factory as every other token here, and this card will read the same on-chain facts as any other card. Until then there is nothing to buy.</div>
+      </div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Status</div><div class="v" style="color:var(--t45)">—</div><div class="s">not launched</div></div>
+        <div class="tile"><div class="k">Quote asset</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
+        <div class="tile"><div class="k">Creator self-buy</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
+        <div class="tile"><div class="k">Creator tax</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
+      </div>
+    </a>
+
+    <div class="how">
+      <div class="step"><span class="num">01</span><div class="lbl">Stream</div><div class="t">Follows the pons v2 factory</div></div>
+      <div class="join">→</div>
+      <div class="step"><span class="num">02</span><div class="lbl">Facts</div><div class="t">SQLite, on your disk</div></div>
+      <div class="join">→</div>
+      <div class="step"><span class="num">03</span><div class="lbl">Model</div><div class="t">GBDT on <span id="k-feat">23</span> leak-free features</div></div>
+    </div>
+
+    <div class="two">
+      <div class="box">
+        <div class="hd"><b>Run it locally</b><span class="right"><span class="sub">Node ≥ 22.6 · no build step</span><button class="copyall" id="copy-all">Copy all</button></span></div>
+        <div class="term" id="term">
+          <div class="cmd" data-cmd="git clone https://github.com/kingwilliamAI/Augur.git &amp;&amp; cd Augur"><span class="txt"><span class="d">$</span> git clone https://github.com/kingwilliamAI/Augur.git &amp;&amp; cd Augur</span><button class="cp">copy</button></div>
+          <div class="cmd" data-cmd="npm install &amp;&amp; cp .env.example .env"><span class="txt"><span class="d">$</span> npm install &amp;&amp; cp .env.example .env</span><button class="cp">copy</button></div>
+          <div class="cmd" data-cmd="npm run setup"><span class="txt"><span class="d">$</span> npm run setup <span class="d"># doctor · a week of history · last 8h decoded</span></span><button class="cp">copy</button></div>
+          <div class="cmd" data-cmd="npm run train &amp;&amp; npm run validate"><span class="txt"><span class="d">$</span> npm run train &amp;&amp; npm run validate</span><button class="cp">copy</button></div>
+          <div class="cmd" data-cmd="npm run board"><span class="txt"><span class="d">$</span> npm run board <span class="c"># → localhost:4663</span> <span class="d">and</span> npm run watch</span><button class="cp">copy</button></div>
+        </div>
+      </div>
+      <div class="box">
+        <b>Or live in the terminal</b>
+        <p style="font-size:13px;line-height:1.55;color:var(--t6);margin:10px 0 0"><code>npm run watch</code> is the same feed as a 120×40 terminal screen: launches on the left, the card on the right, every score logged before its outcome exists.</p>
+        <div class="keys">
+          <div><b>↑ ↓</b><span>select a launch</span></div>
+          <div><b>c</b><span>copy contract</span></div>
+          <div><b>f</b><span>top decile only</span></div>
+          <div><b>p</b><span>pause the feed</span></div>
+          <div><b>⏎</b><span>open in explorer</span></div>
+          <div><b>q</b><span>quit</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ───────────── BOARD ───────────── -->
+<section id="page-roadmap" hidden>
+  <div class="doc">
+    <div class="rmbar">
+      <b>Roadmap</b><span>in order &middot; no dates</span>
+      <span id="rm-count">&mdash;</span>
+      <span class="sp"><span class="dot"></span><span id="rm-now">&mdash;</span></span>
+    </div>
+    <div class="rmwrap">
+      <h1>What gets built next</h1>
+      <div class="sub">The local board is live. The hosted one is not built yet, and neither is anything that needs the token.</div>
+      <div class="tl" id="rm-tl"></div>
+    </div>
+
+    <div class="cols2">
+      <div class="prose">
+        <p>augur reads pons v2 launches on Robinhood Chain, scores them and ranks them. Today that happens on your own machine: you clone a repository and run a runtime, which rules out almost everybody. A hosted board is the next thing that matters, and it is not built.</p>
+        <p>Here is what gets built next, in order, with no dates. Anything marked <b>planned</b> above does not exist. If a page on this site ever describes something as working when it is not, that is a bug worth reporting.</p>
+
+        <h2><span class="n">01</span>Make the score worth trusting</h2>
+        <p>The graduation model is validated on time-ordered folds and reports what it actually did, including the folds where it did no better than chance. The peak model ranks well and sizes badly, so it is shown as an 80% band rather than as a number. Both improve with more settled history, which is what the backfills are for.</p>
+
+        <h2><span class="n">02</span>Cover the history</h2>
+        <p>Curves are read on demand, pools are swept wholesale, and enrichment has only covered the recent window. Every one of those gaps shows up as a dash somewhere on a card. The work is unglamorous and mostly spent waiting on rate limits.</p>
+
+        <h2><span class="n">03</span>Make it reachable</h2>
+        <p>A hosted board, then alerts. The local version stays free and stays the reference: the score you compute yourself is the score the site shows, which is the point of it being open.</p>
+
+        <h2><span class="n red">04</span>Never</h2>
+        <div class="never">
+          <div><i>x</i><span>Never asks for a private key, a seed phrase or an approval.</span></div>
+          <div><i>x</i><span>Never holds funds, never trades, never touches a wallet.</span></div>
+          <div><i>x</i><span>Never sends your data anywhere. The local board talks to a public RPC and nothing else.</span></div>
+          <div><i>x</i><span>Never presents a score as a safety rating, a price forecast, or advice.</span></div>
+          <div><i>x</i><span>Never quietly drops a validation result for being unflattering.</span></div>
+        </div>
+
+        <h2><span class="n">05</span>How to check</h2>
+        <p>Commits show what shipped and when. The model page shows what the model scored on data it had not seen, and the scoreboard grades claims that were recorded before their outcomes existed. If something here goes quiet for weeks, ask about it in public.</p>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="side">
+          <h3>Shipped so far</h3>
+          <div class="ship" id="rm-ship"></div>
+        </div>
+        <div class="side">
+          <h3>Measured from this database</h3>
+          <div class="row2"><b>Launches indexed</b><span id="rm-total">&mdash;</span></div>
+          <div class="row2"><b>Reached the pool</b><span id="rm-grad">&mdash;</span></div>
+          <div class="row2"><b>Base graduation rate</b><span id="rm-base">&mdash;</span></div>
+          <div class="row2"><b>Top-decile lift</b><span id="rm-lift">&mdash;</span></div>
+          <div class="row2"><b>Launches enriched</b><span id="rm-enr">&mdash;</span></div>
+        </div>
+        <div class="side" id="rm-coin">
+          <h3>$AUGUR</h3>
+          <div style="font:12px var(--mono);color:var(--t55);line-height:1.5" id="rm-coin-b">&mdash;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="page-run" hidden>
+  <div class="doc">
+    <h1>Run it</h1>
+    <div class="sub">Node &gt;= 22.6 &middot; no Python &middot; no build step &middot; no database to install</div>
+
+    <div class="cols2">
+      <div>
+        <div class="steps">
+          <div class="stp">
+            <div class="hd"><span class="n">01</span><b>Get the code</b><span class="t">seconds</span></div>
+            <div class="d">TypeScript runs directly on Node 22.6 and later, so there is nothing to compile.</div>
+            <div class="cmd"><span class="p">$</span><code>git clone https://github.com/kingwilliamAI/Augur.git &amp;&amp; cd Augur</code><button data-copy>copy</button></div>
+          </div>
+          <div class="stp">
+            <div class="hd"><span class="n">02</span><b>Install and create the database</b><span class="t">under a minute</span></div>
+            <div class="d">Writes ./data/augur.db and checks it can reach both endpoints. The defaults in .env work as they are.</div>
+            <div class="cmd"><span class="p">$</span><code>npm install &amp;&amp; npm run setup</code><button data-copy>copy</button></div>
+          </div>
+          <div class="stp">
+            <div class="hd"><span class="n">03</span><b>Collect some history</b><span class="t">minutes to hours</span></div>
+            <div class="d">A model needs settled outcomes before it can be fitted. Backfill reads past launches; enrich fills in who created them and how much they self-bought.</div>
+            <div class="cmd"><span class="p">$</span><code>npm run backfill -- --hours 26</code><button data-copy>copy</button></div>
+            <div class="cmd"><span class="p">$</span><code>npm run enrich-window -- --hours 20</code><button data-copy>copy</button></div>
+          </div>
+          <div class="stp">
+            <div class="hd"><span class="n">04</span><b>Fit the model and check it</b><span class="t">a minute</span></div>
+            <div class="d">Trains on time-ordered folds and prints what it scored on data it had not seen. If that looks like chance, it says so.</div>
+            <div class="cmd"><span class="p">$</span><code>npm run train &amp;&amp; npm run validate</code><button data-copy>copy</button></div>
+          </div>
+          <div class="stp">
+            <div class="hd"><span class="n">05</span><b>Open the board and start the watcher</b><span class="t">now</span></div>
+            <div class="d">Two processes: the board serves this page, the watcher follows the chain and records every score before its outcome exists. Run them in separate terminals.</div>
+            <div class="cmd"><span class="p">$</span><code>npm run board</code><button data-copy>copy</button></div>
+            <div class="cmd"><span class="p">$</span><code>npm run watch</code><button data-copy>copy</button></div>
+          </div>
+          <div class="stp">
+            <div class="hd"><span class="n">06</span><b>Keep it current</b><span class="t">nightly</span></div>
+            <div class="d">Backfill, enrich, read curves, follow pools, retrain, then fold old curves into summaries and reclaim the disk. The board reloads the model on every request, so a retrain needs no restart.</div>
+            <div class="cmd"><span class="p">$</span><code>npm run nightly</code><button data-copy>copy</button></div>
+          </div>
+        </div>
+
+        <div class="prose">
+          <h2><span class="n">&middot;</span>Two endpoints, on purpose</h2>
+          <p>Only the official RPC serves <code>eth_getLogs</code>, and it has no websocket. publicnode has the socket and faster state reads but refuses logs. So detection rides the socket, log reads go to the official node, and enrichment reads transactions from publicnode, which keeps the log budget with the watcher.</p>
+          <p>Both are public and neither needs a key. Measured over a day the whole thing costs about 133,000 requests, roughly 1.5 a second, against endpoints that start refusing near ten. A long bulk read earns a 403 eventually anyway; that is a request to slow down, and the reader waits it out rather than failing.</p>
+        </div>
+      </div>
+
+      <div class="side">
+        <h3>.env defaults</h3>
+        <table class="envt">
+          <tr><th>Key</th><th>Default</th></tr>
+          <tr><td class="k">RPC_HTTP_URL</td><td class="v">rpc.mainnet.chain.robinhood.com</td></tr>
+          <tr><td class="k">RPC_STATE_URL</td><td class="v">robinhood-rpc.publicnode.com</td></tr>
+          <tr><td class="k">RPC_WS_URL</td><td class="v">wss://robinhood-rpc.publicnode.com</td></tr>
+          <tr><td class="k">POLL_MS</td><td class="v">300</td></tr>
+          <tr><td class="k">RPC_IN_FLIGHT</td><td class="v">3</td></tr>
+          <tr><td class="k">RPC_SPACING_MS</td><td class="v">60</td></tr>
+          <tr><td class="k">LOGS_CHUNK_BLOCKS</td><td class="v">60000</td></tr>
+          <tr><td class="k">DB_PATH</td><td class="v">./data/augur.db</td></tr>
+          <tr><td class="k">BOARD_PORT</td><td class="v">4663</td></tr>
+          <tr><td class="k">BOARD_HOST</td><td class="v">0.0.0.0</td></tr>
+          <tr><td class="k">RATE_LIMIT</td><td class="v">240</td></tr>
+        </table>
+        <div style="margin-top:12px;font-size:12.5px;color:var(--t45);line-height:1.5">Behind a reverse proxy, bind to loopback and let the proxy be the front door: <code>BOARD_HOST=127.0.0.1</code> with <code>TRUST_PROXY=1</code>.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="page-telegram" hidden>
+  <div class="doc">
+    <h1>Telegram</h1>
+    <div class="sub">One room, one bot.</div>
+    <div class="notyet"><b>The room does not exist yet.</b> There is no $AUGUR contract for it to be about, and no official chat of any kind. Anyone contacting you now claiming to be the augur bot, the team, or support, is not. What does exist is the alert bot below, and it is one you run yourself: it is your bot, on your machine, under a token only you hold.</div>
+    <div class="cols2">
+      <div class="prose">
+        <h2><span class="n">&middot;</span>The alert bot, today</h2>
+        <p>Running <code>npm run telegram</code> puts the board in a chat. You create the bot yourself with @BotFather, put its token in <code>.env</code>, and it talks to nobody else: <code>/watch 8</code> sets a floor, and every launch that clears it arrives with its score, its rank and its three reasons. <code>/token 0x…</code> answers with the card, <code>/top</code> with the highest scoring launches right now, <code>/status</code> with whether the watcher is still alive.</p>
+        <p>This is the one part of the project that speaks to a third party, so it is worth saying exactly what leaves: launch addresses and a number this machine computed, both public. No key, no seed, nothing about a wallet. It is a separate command you start on purpose, never part of the watcher.</p>
+        <h2><span class="n">&middot;</span>The room, later</h2>
+        <p>The plan is a single room that acts as the tape: every $AUGUR buy lands in it the moment it clears the pool, with the wallet, the size and the price. The bot answers questions in the room, and in a direct message it opens Pro for anyone who can prove the holding.</p>
+        <h2><span class="n red">&middot;</span>What the bot will never do</h2>
+        <div class="never">
+          <div><i>x</i><span>Never asks for a key, a seed phrase or an approval.</span></div>
+          <div><i>x</i><span>Never messages anyone first.</span></div>
+          <div><i>x</i><span>Never holds funds, never trades, never touches a wallet.</span></div>
+        </div>
+        <p>The holder check is a signature over a plain sentence, the kind every wallet can produce without spending gas, and the sentence says in words that it moves nothing.</p>
+        <h2><span class="n">&middot;</span>House rules</h2>
+        <p>Nobody will ever message you first. Nobody will ever ask for your seed. No links to other tokens. There will be exactly one contract, published on the $AUGUR page, and every other address carrying this name is not ours.</p>
+      </div>
+      <div class="side">
+        <h3>Status</h3>
+        <div class="row2"><b>Alert bot</b><span>built, run it yourself</span></div>
+        <div class="row2"><b>Room</b><span>not created</span></div>
+        <div class="row2"><b>Tape bot</b><span>not written</span></div>
+        <div class="row2"><b>Contract</b><span>not launched</span></div>
+        <div class="row2"><b>Depends on</b><span>$AUGUR</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="page-pro" hidden>
+  <div class="doc">
+    <h1>Pro</h1>
+    <div class="sub">The terminal on your machine is free and stays free. Pro is the hosted half.</div>
+    <div class="notyet"><b>Not built yet.</b> There is no hosted board, no holder check and no $AUGUR contract. Nothing on this page can be bought, signed or unlocked today. It is here so the terms are visible before any of it exists.</div>
+    <div class="cols2">
+      <div class="prose">
+        <p>The plan is that holding $AUGUR opens the hosted site up: more watches at once, more live feeds, the heavy reads without a challenge, and creator history over any window. Proving the holding is a signature over a plain sentence. A signature has no chain, so the wallet can sit anywhere, and the site never asks for a key, a seed or an approval.</p>
+        <h2><span class="n">&middot;</span>What stays free, always</h2>
+        <p>Everything you are looking at. The board, the card behind every launch, the model and its validation, the prediction log. You run it yourself, it talks to a public RPC and nothing else, and the score you compute is the score the hosted site shows. That is the point of it being open, and Pro does not change it.</p>
+      </div>
+      <div class="side">
+        <h3>Free vs Pro</h3>
+        <div class="row2"><b>Local board</b><span>free, always</span></div>
+        <div class="row2"><b>Full card and model</b><span>free, always</span></div>
+        <div class="row2"><b>Prediction log</b><span>free, always</span></div>
+        <div class="row2"><b>Hosted board</b><span>planned</span></div>
+        <div class="row2"><b>Alerts</b><span>planned</span></div>
+        <div class="row2"><b>Holder check</b><span>planned</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="page-board" hidden>
+  <div class="board" id="board">
+    <div class="list">
+      <div class="lhead"><b>Fresh launches</b><span class="m" id="lh-m">—</span><span class="live" id="lh-live"><span class="dot"></span>LIVE</span></div>
+      <div class="stale" id="stale"></div>
+      <div class="filters">
+        <span class="f on" data-f="All">All</span>
+        <span class="f" data-f="Top decile">Top decile</span>
+        <span class="f" data-f="Repeat creators">Repeat creators</span>
+        <span class="f" data-f="ETH-quoted">ETH-quoted</span>
+        <span class="f mono" id="gear" title="score threshold and time window">⚙ settings</span>
+        <span class="shown" id="shown"></span>
+        <div class="spacer"></div>
+        <span class="f mono" id="m-score" title="ranked by score">by chance</span>
+        <span class="f mono" id="m-new" title="newest first, rank still by score">newest</span>
+        <span class="f mono" id="pause">⏸ pause</span>
+      </div>
+      <div class="settings" id="settings" hidden>
+        <label for="s-min">Show only at or above <input type="number" id="s-min" min="0" max="99" step="0.5"> % chance</label>
+        <label for="s-win">Window <select id="s-win"><option value="1">1 hour</option><option value="3">3 hours</option><option value="6">6 hours</option><option value="12">12 hours</option><option value="24">24 hours</option></select></label>
+        <span class="f mono" id="s-reset">Reset</span>
+        <span class="sfoot" id="s-foot"></span>
+      </div>
+      <div class="cols"><span>Time</span><span>Token</span><span class="r">Grad</span><span class="r">Rank</span><span>Reasons</span><span class="r">Self-buy</span><span class="r" title="the highest any earlier launch by this creator ever reached">Dev ATH</span><span class="r">Age</span></div>
+      <div class="rows" id="rows"></div>
+      <div class="empty" id="empty" hidden></div>
+    </div>
+    <div class="divider" id="divider" title="Drag to resize"><i></i></div>
+    <div class="panel" id="panel"><div class="empty">Click a launch to open its card</div></div>
+  </div>
+</section>
+
+<!-- ───────────── MODEL ───────────── -->
+<section id="page-model" hidden>
+  <div class="page">
+    <div class="ph"><h2>Model</h2><span class="m" id="mo-h">—</span></div>
+    <div class="pipe" id="pipe"></div>
+    <div class="metrics" id="metrics"></div>
+    <div class="two2">
+      <div class="pane"><div class="k">Feature influence · mean |contribution| on the current board</div><div id="imp"><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div></div></div>
+      <div class="pane"><div class="k">Live scoreboard · claims written before the outcome existed</div><div class="log" id="livelog"><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div><div class="rowskel"><i></i><i></i></div></div></div>
+    </div>
+    <p class="honest" id="honest"></p>
+  </div>
+</section>
+
+<!-- ───────────── TOKEN ───────────── -->
+<section id="page-token" hidden>
+  <div class="doc">
+    <div id="coin-standin"></div>
+    <div class="coinhd"><span id="coin-crumb">coin</span><span class="st" id="coin-state" hidden><span class="dot"></span><span>pool open</span></span></div>
+    <div class="coinpx"><b id="coin-px">&mdash;</b><span class="ch" id="coin-ch"></span><span class="w" id="coin-fdv"></span></div>
+
+    <div class="strip" id="coin-strip"></div>
+
+    <div class="coincols">
+      <div>
+        <div class="chartbar"><span class="tf" id="coin-tf"></span><span id="coin-chart-lbl"></span><span class="src">read from this database &middot; not an API</span></div>
+        <div class="chart"><div id="coin-chart"></div><div class="ax" id="coin-ax"></div></div>
+        <div class="rng" id="coin-rng"></div>
+
+        <div class="h2r"><h2>Where the fee goes</h2></div>
+        <div class="flow2" id="coin-fee"></div>
+
+        <div class="cols2" style="margin-top:38px;gap:36px;grid-template-columns:1fr 1fr">
+          <div>
+            <div class="h2r" style="margin-top:0"><h2>Why this coin exists</h2></div>
+            <div class="prose">
+              <p>The board runs on a node and a model that costs money to retrain every night. Rather than sell a subscription, the plan is a coin launched on the same factory the board watches, with its creator fee pointed at the cost of running it. Trading it is how the board stays free.</p>
+              <p>That is the whole arrangement. No roadmap for the token itself, no unlock, no share of anything, and nobody holding a reserved allocation.</p>
+            </div>
+          </div>
+          <div>
+            <div class="h2r" style="margin-top:0"><h2>Fee ledger</h2><span class="q" id="coin-ledger-since"></span></div>
+            <div class="ldg" id="coin-ledger"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card2">
+          <div class="top"><span class="lg" id="coin-lg">P</span><div><b id="coin-name">&mdash;</b><span id="coin-sub"></span></div></div>
+          <a class="buy" id="coin-buy" target="_blank" rel="noopener">buy on Uniswap &#8599;</a>
+          <div class="lnks" id="coin-links"></div>
+          <div class="last"><span>reached the pool</span><span id="coin-last">&mdash;</span></div>
+        </div>
+        <div class="verify">
+          <div class="hd"><h3>Verify before you buy</h3><button id="coin-copy">Copy</button></div>
+          <div style="margin-top:4px;font:12px Geist,sans-serif;color:var(--t55)">Match the address, not the name. Nothing on this site asks you to connect a wallet.</div>
+          <div id="coin-verify"></div>
+          <div class="note">Every other address carrying this name is not ours.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- One footer for every page. It used to live inside #page-home, which meant seven of the eight
+     pages simply had none: the element existed in the DOM the whole time and was hidden along with
+     the section around it. The board is the exception and opts out below, because it is a 100vh
+     grid with the document scroll locked, so anything under it could never be reached. -->
+<footer class="ft" id="ft">
+  <div class="wrap ftin">
+    <div class="ftbrand">
+      <div class="ftlogo"><img class="mark img" src="/icon-64.png" alt=""><b>augur</b></div>
+      <p>Scores every pons v2 launch on Robinhood Chain the second it lands. MIT, no wallet, no keys. Not a safety rating, not a price forecast, not advice.</p>
+    </div>
+    <div class="ftcol">
+      <h4>Product</h4>
+      <a href="#/board">Board</a>
+      <a href="#/model">Model</a>
+      <a href="#/roadmap">Roadmap</a>
+      <a href="#/run">Run it locally</a>
+      <a href="https://github.com/kingwilliamAI/Augur#readme" target="_blank" rel="noopener">Docs ↗</a>
+    </div>
+    <div class="ftcol">
+      <h4>Community</h4>
+      <a href="https://github.com/kingwilliamAI/Augur" target="_blank" rel="noopener">GitHub ↗</a>
+      <a href="https://x.com/kingwilliam_" target="_blank" rel="noopener">@kingwilliam_ ↗</a>
+      <a href="#/telegram">Telegram</a>
+      <a href="#/pro">Pro</a>
+    </div>
+    <div class="ftcol ftcoin">
+      <h4>$AUGUR · the only contract</h4>
+      <div class="ftaddr" id="ft-addr">not launched yet</div>
+      <a class="ftlink" href="#/token">Coin page →</a>
+      <p class="ftwarn">No address has been published. Every other address with this name is not ours.</p>
+    </div>
+  </div>
+  <div class="wrap ftbar">
+    <span>© 2026 augur · MIT</span>
+    <span class="ftstat"><span class="dot"></span><span id="ftstat">—</span></span>
+  </div>
+</footer>
+
+</div>
+
+<script>
+/* ── helpers ── */
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "—";
+const pct = (p) => (100 * p).toFixed(1) + "%";
+const EXP = "https://robinhoodchain.blockscout.com";
+const hhmmss = (ts) => new Date(ts * 1000).toTimeString().slice(0, 8);
+const ago = (ts) => { const s = Math.max(0, Math.floor(Date.now() / 1000) - ts); return s < 90 ? s + "s" : s < 5400 ? Math.round(s / 60) + "m" : (s / 3600).toFixed(1) + "h"; };
+const secs = (s) => s < 90 ? s + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
+const hue = (a) => { let h = 0; for (const ch of (a || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 55% 55%)`; };
+const pcol = (it) => it.percentile >= 90 ? "var(--lime)" : it.probability >= 0.03 ? "var(--amber)" : "var(--t5)";
+
+/**
+ * Copy, with a fallback.
+ *
+ * navigator.clipboard exists only in a secure context. localhost counts as one, but the deploy guide
+ * puts this board on a LAN address over plain http, where the API is simply undefined — and a copy
+ * button that silently does nothing is worse than no button. The textarea path is the old way and
+ * still works there.
+ */
+async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) { await navigator.clipboard.writeText(text); return true; }
+  } catch { /* fall through */ }
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.setAttribute("readonly", "");
+    ta.style.cssText = "position:fixed;top:-1000px;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch { return false; }
+}
+
+/** Swaps a button's label to confirm, then puts it back. */
+async function copyWithFeedback(btn, text, label = "copy", done = "copied ✓") {
+  const ok = await copyText(text);
+  btn.textContent = ok ? done : "press ⌘/Ctrl+C";
+  btn.classList.toggle("done", ok);
+  clearTimeout(btn._t);
+  btn._t = setTimeout(() => { btn.textContent = label; btn.classList.remove("done"); }, 1600);
+}
+
+/* ── state ── */
+const S = {
+  page: "home", feed: null, sel: null, card: null,
+  filter: "All", paused: false,
+  order: localStorage.getItem("augur.order") === "new" ? "new" : "score",
+  known: new Set(), copiedSel: 0, panelW: Number(localStorage.getItem("augur.panelW")) || 400,
+  // Kept as a percentage because that is the unit on screen; the API takes a probability.
+  minScore: Math.min(99, Math.max(0, Number(localStorage.getItem("augur.minScore")) || 0)),
+  hours: [1, 3, 6, 12, 24].includes(Number(localStorage.getItem("augur.hours"))) ? Number(localStorage.getItem("augur.hours")) : 6,
+  settingsOpen: localStorage.getItem("augur.settingsOpen") === "1",
+};
+
+/* ── routing ── */
+function route() {
+  const h = location.hash.replace(/^#\/?/, "");
+  const [page, arg] = h.split("/");
+  S.page = ["board", "model", "token", "roadmap", "run", "telegram", "pro"].includes(page) ? page : "home";
+  for (const p of ["home", "board", "model", "token", "roadmap", "run", "telegram", "pro"]) $("page-" + p).hidden = S.page !== p;
+  document.querySelectorAll("[data-nav]").forEach((a) => a.classList.toggle("on", a.dataset.nav === S.page));
+  document.body.style.overflow = S.page === "board" ? "hidden" : "";
+  $("ft").classList.toggle("off", S.page === "board");
+  if (S.page === "board" && arg && arg.startsWith("0x")) openCard(arg.toLowerCase());
+  if (S.page === "model") loadModel();
+  if (S.page === "token") loadCoin();
+  if (S.page === "home" || S.page === "roadmap") loadStats();
+  if (S.page === "roadmap") layoutRoadmap();
+  loadFeed();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+
+/* ── live pill + staleness: the watcher can die silently; the list must say so ── */
+function showHealth(h, d) {
+  const pill = $("livepill"), txt = $("livetxt"), st = $("stale"), lh = $("lh-live");
+  const mins = (s) => s < 90 ? `${s}s` : `${Math.round(s / 60)}m`;
+  let cls = "", msg = "";
+  if (!h) {
+    // Nothing to report on, which is not the same as something to report.
+    showUnreachable();
+    return;
+  }
+  if (h.watcherSeenSecAgo === null || h.watcherSeenSecAgo > 120) {
+    cls = "bad"; msg = h.watcherSeenSecAgo === null
+      ? "The watcher has never reported in. Nothing here is live. Start it with: npm run watch"
+      : `The watcher has not reported for ${mins(h.watcherSeenSecAgo)}. This list has stopped updating.`;
+  } else if (h.behindSec !== null && h.behindSec > 120) { cls = "bad"; msg = `Running ${mins(h.behindSec)} behind the chain. Launches from the last ${mins(h.behindSec)} are missing.`; }
+  else if (h.behindSec !== null && h.behindSec > 30) { cls = "warn"; msg = `Running ${mins(h.behindSec)} behind the chain, catching up.`; }
+  pill.className = "live " + cls; lh.className = "live " + cls;
+  st.className = "stale " + cls; st.textContent = msg;
+  const when = d.modelTrainedAt ? new Date(d.modelTrainedAt * 1000).toISOString().slice(11, 16) + " UTC" : "—";
+  txt.textContent = (cls === "bad" ? "stale" : "live") + " · block " + (h && h.headBlock ? h.headBlock.toLocaleString("en-US") : "—") + " · model " + when;
+  const fs = $("ftstat");
+  if (fs) { fs.textContent = txt.textContent; fs.parentElement.className = "ftstat live " + cls; }
+}
+
+/* ── feed ── */
+/**
+ * One request at a time. The poll is on a timer, so a slow answer used to have the next request
+ * launched on top of it; against a synchronous database that queues rather than parallelises, that
+ * turns one slow response into a growing backlog and the page never catches up.
+ */
+let feedInFlight = false;
+async function loadFeed() {
+  if (feedInFlight) return;
+  if (S.paused && S.page === "board") return;
+  feedInFlight = true;
+  let d = null;
+  try {
+    const r = await fetch(`/api/feed?hours=${S.hours}&sort=${S.order}&min=${S.minScore / 100}`);
+    // A refusal is not data. The board answers a rate limit with 200-shaped JSON carrying an error
+    // and nothing else, so fetch resolves, JSON parses, and the old code handed that object on as a
+    // feed: no items for the list, no health for the banner. The banner then read the missing health
+    // as "the watcher has never reported in", which is a claim about the watcher made from having
+    // heard nothing at all.
+    if (r.ok) {
+      const body = await r.json();
+      if (body && !body.error) d = body;
+    }
+  } catch {
+    // Unreachable board; handled the same as a refusal.
+  } finally {
+    feedInFlight = false;
+  }
+
+  if (!d) { showUnreachable(); return; }
+
+  S.feed = d;
+  showHealth(d.health, d);
+  renderHero();
+  if (S.page === "board") renderBoard();
+}
+
+/**
+ * What to say when the board itself did not answer.
+ *
+ * Deliberately separate from the staleness banner: that one reports on the watcher, and this one
+ * reports that we have no idea how the watcher is doing. Whatever the list is already showing stays
+ * on screen, because stale rows with a warning above them beat an empty page.
+ */
+function showUnreachable() {
+  const st = $("stale"), pill = $("livepill"), lh = $("lh-live"), txt = $("livetxt");
+  st.className = "stale warn";
+  st.textContent = "No answer from the board just now, so this list may be behind. It will catch up on its own.";
+  pill.className = "live warn";
+  lh.className = "live warn";
+  txt.textContent = "no answer";
+}
+
+function passes(it) {
+  const m = it.meta || {};
+  if (S.filter === "Top decile") return it.percentile >= 90;
+  if (S.filter === "Repeat creators") return (m.dev_total || 1) > 1;
+  if (S.filter === "ETH-quoted") return !!m.is_eth;
+  return true;
+}
+
+/**
+ * The roadmap, drawn on one line rather than listed.
+ *
+ * Five marks on a rule, captions alternating above and below so they fit side by side, and the rule
+ * filled in lime only as far as the work actually got. The stage's height and the rule's position
+ * come from measuring the captions, so a long one is never clipped: see layoutRoadmap.
+ *
+ * Status lives in the data, not in the markup: the header's "n of five shipped" and the length of
+ * the fill are both counted from the same array the marks come from, so a milestone cannot move
+ * without the summary moving with it.
+ */
+const ROAD = [
+  { tag: "shipped", cls: "done", title: "The terminal", d: "reads, scores, ranks, and waits the opening tax out" },
+  { tag: "shipped", cls: "done", title: "The card", d: "creator, self-buy, exempt wallets, fee route, their history" },
+  { tag: "shipped", cls: "done", title: "Past the curve", d: "a graduated launch is followed into the pool" },
+  { tag: "building", cls: "now", title: "The whole history", d: "pool peaks and tickers, read back over every launch" },
+  { tag: "then", cls: "next", title: "Hosted, then alerts", d: "same score, our node, nothing to install" },
+];
+
+const SHIPPED = [
+  { t: "Terminal · npm run watch", w: "Sep", ok: true },
+  { t: "Board · localhost:4663", w: "Sep", ok: true },
+  { t: "Scoreboard + verify", w: "Sep", ok: true },
+  { t: "Peak model, as a band", w: "Sep", ok: true },
+  { t: "Pool tracking after graduation", w: "Sep", ok: true },
+  { t: "Hosted board", w: "not yet", ok: false },
+  { t: "$AUGUR", w: "not yet", ok: false },
+];
+
+function drawRoadmap() {
+  const stage = $("rm-tl");
+  if (!stage || stage.dataset.drawn) return;
+  stage.dataset.drawn = "1";
+
+  const n = ROAD.length;
+  const at = (i) => 2 + (i * 78) / (n - 1); // percent; the caption is 17% wide, so the last mark stops short of the edge
+  const shipped = ROAD.filter((m) => m.cls === "done").length;
+  const building = ROAD.find((m) => m.cls === "now");
+
+  // The fill stops at the last finished mark, so the rule shows progress rather than decoration.
+  const fillTo = at(Math.max(0, shipped - 1));
+
+  const GAP = 18;
+  stage.innerHTML =
+    '<div class="line"></div><div class="fill"></div>' +
+    ROAD.map((m, i) => {
+      const up = i % 2 === 0;
+      return '<span class="mk ' + m.cls + '" style="left:' + at(i) + '%"></span>' +
+        '<div class="m ' + m.cls + '" data-up="' + (up ? 1 : 0) + '" style="left:' + at(i) + '%">' +
+        '<div class="tag">' + esc(m.tag) + '</div>' +
+        '<div class="ti">' + esc(m.title) + '</div>' +
+        '<div class="de">' + esc(m.d) + '</div></div>';
+    }).join("");
+
+  stage.dataset.fill = fillTo;
+  layoutRoadmap();
+
+  $("rm-count").textContent = shipped + " of " + n + " shipped";
+  $("rm-now").textContent = building ? building.title.toLowerCase() : "nothing in flight";
+
+  $("rm-ship").innerHTML = SHIPPED.map((s) =>
+    '<div class="r' + (s.ok ? "" : " no") + '"><i>' + (s.ok ? "\u2713" : "\u00b7") + "</i><b>" +
+    esc(s.t) + "</b><span>" + esc(s.w) + "</span></div>").join("");
+}
+
+/**
+ * Where the rule sits and how tall the stage is, measured from the captions themselves.
+ *
+ * Separate from drawing them because it has to run more than once. `loadStats` feeds both the front
+ * page and this one, so the markup was being built while `#page-roadmap` was still `hidden` — and a
+ * hidden element measures zero. Every caption came back 0px tall, the stage sized itself to 38px,
+ * and then the page was shown and five 81px captions spilled out of it and over the prose below. The
+ * build only happens once; the measurement happens whenever the stage is visible, which is also what
+ * makes a resize or a late-arriving webfont reflow it instead of leaving stale offsets behind.
+ */
+function layoutRoadmap() {
+  const stage = $("rm-tl");
+  // offsetParent is null while an ancestor is hidden, which is exactly when the measurement lies.
+  if (!stage || !stage.dataset.drawn || stage.offsetParent === null) return;
+
+  const GAP = 18;
+  const caps = [...stage.querySelectorAll(".m")];
+  if (!caps.length) return;
+  const tallest = (up) => Math.max(0, ...caps.filter((c) => (c.dataset.up === "1") === up).map((c) => c.offsetHeight));
+  const above = tallest(true), below = tallest(false);
+  const rule = above + GAP;
+
+  stage.style.height = rule + 2 + GAP + below + "px";
+  stage.querySelector(".line").style.top = rule + "px";
+  const fill = stage.querySelector(".fill");
+  fill.style.top = rule + "px";
+  fill.style.width = stage.dataset.fill + "%";
+  stage.querySelectorAll(".mk").forEach((mk) => { mk.style.top = rule - 6 + "px"; });
+  caps.forEach((c) => {
+    if (c.dataset.up === "1") c.style.top = rule - GAP - c.offsetHeight + "px";
+    else c.style.top = rule + 2 + GAP + "px";
+  });
+}
+
+// A caption's height depends on how wide it is and on which font is drawing it, so both events that
+// change either one have to re-measure.
+addEventListener("resize", layoutRoadmap);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(layoutRoadmap);
+
+/**
+ * The roadmap's figures, from the same request the front page already makes.
+ *
+ * A roadmap that quotes its own database is harder to let rot than one carrying typed-in numbers,
+ * and these come from a call the page was making anyway.
+ */
+function renderRoadmap(s) {
+  drawRoadmap();
+  if (!s) return;
+  const set = (id, v) => { const el = $(id); if (el) el.textContent = v; };
+  set("rm-total", s.total ? s.total.toLocaleString() : "\u2014");
+  set("rm-grad", s.graduationsWeek ? s.graduationsWeek.toLocaleString() : "\u2014");
+  set("rm-base", s.baseRate === null || s.baseRate === undefined ? "\u2014" : (100 * s.baseRate).toFixed(2) + "%");
+  set("rm-lift", s.decileLift ? s.decileLift.toFixed(2) + "x" : "not validated yet");
+  set("rm-enr", s.enriched && s.total ? s.enriched.toLocaleString() + " of " + s.total.toLocaleString() : "\u2014");
+  const coin = $("rm-coin-b");
+  if (coin) {
+    coin.textContent = s.coin && s.coin.token
+      ? s.coin.token
+      : "no address published. Anything claiming to be $AUGUR before one appears here is not ours.";
+  }
+}
+
+function renderHero() {
+  const d = S.feed; if (!d || !d.items) return;
+  const top = [...d.items].sort((a, b) => b.probability - a.probability).slice(0, 7);
+  if (!top.length) return;   // keep the placeholders rather than emptying the panel
+  $("hero-rows").innerHTML = top.map((it) => { const m = it.meta || {}; const r = it.reasons[0];
+    return `<div class="shot-row" style="${it.percentile >= 90 ? "background:rgba(204,255,0,.06)" : ""}">
+      <span class="p" style="color:${pcol(it)}">${pct(it.probability)}</span>
+      <span style="min-width:0"><span class="nm"><b>${esc(m.symbol || "?")}</b><span>${esc(m.name || "")}</span></span><span class="r1">${r ? (r.direction === "up" ? "+ " : "− ") + esc(r.text) : ""}</span></span>
+      <span class="rk">#${it.rank}</span><span class="ag">${m.ts ? ago(m.ts) : ""}</span></div>`; }).join("");
+}
+
+function renderBoard() {
+  const d = S.feed; if (!d) return;
+  $("lh-m").textContent = `${d.lastHour.launches.toLocaleString()} in the last hour · ${d.lastHour.graduated} graduated`;
+  $("m-score").classList.toggle("on", S.order === "score");
+  $("m-new").classList.toggle("on", S.order === "new");
+  document.querySelectorAll(".f[data-f]").forEach((f) => f.classList.toggle("on", f.dataset.f === S.filter));
+  $("pause").textContent = S.paused ? "▶ resume" : "⏸ pause";
+  const win = S.hours === 1 ? "hour" : S.hours + "h";
+  // Three numbers, because with a threshold set they are three different things: what is on screen,
+  // what cleared the threshold, and what actually launched.
+  $("shown").textContent = !d.inWindow ? ""
+    : S.minScore > 0
+      ? `showing ${d.shown} of ${d.matched.toLocaleString()} at or above ${S.minScore}% · ${d.inWindow.toLocaleString()} launched in the last ${win}`
+      : `showing ${d.shown} of ${d.inWindow.toLocaleString()} in the last ${win}`;
+
+  if (!d.hasModel) { $("rows").innerHTML = ""; $("empty").hidden = false; $("empty").textContent = "no model yet. Run: npm run train"; return; }
+  const items = d.items.filter(passes);
+  if (!items.length) { $("rows").innerHTML = ""; $("empty").hidden = false; $("empty").textContent = S.minScore > 0 ? `nothing scored ${S.minScore}% or better in the last ${win}` : `nothing matches this filter in the last ${win}`; return; }
+  $("empty").hidden = true;
+
+  const first = S.known.size === 0;
+  $("rows").innerHTML = items.map((it) => {
+    const m = it.meta || {};
+    const fresh = !first && !S.known.has(it.token);
+    const top = it.percentile >= 90;
+    const chips = it.reasons.slice(0, 3).map((r) =>
+      `<span class="${r.direction}" title="${esc(r.text)}">${esc(r.short)}</span>`);
+    if (m.graduated) chips.unshift(`<span class="g">reached the pool${m.grad_secs ? " · " + secs(m.grad_secs) : ""}</span>`);
+    // The creator's high-water mark. Built here rather than inline: it needs a tooltip either way,
+    // and an absent history has to read as absent rather than as a zero.
+    const dev = m.dev_best_usd
+      ? '<span title="their best launch so far: ' + esc(m.dev_best_symbol || "?") + " reached " + esc(m.dev_best_usd) + '">' + esc(m.dev_best_usd) + "</span>"
+      : '<span class="none" title="none of their earlier curves have been read yet">—</span>';
+    if (m.cluster_total > 1) chips.push(`<span title="launches sharing this ticker (reached the pool)">${m.cluster_total} share ticker (${m.cluster_grad})</span>`);
+    return `<div class="row${top ? " top" : ""}${it.token === S.sel ? " sel" : ""}${fresh ? " fresh" : ""}" data-token="${it.token}">
+      <span class="t"><span>${m.ts ? hhmmss(m.ts) : ""}</span><i>${fresh ? "NEW" : ""}</i></span>
+      <span class="tk"><span class="cdot" style="background:${hue(it.token)}"></span><b>${esc(m.symbol || "?")}</b><span class="a">${short(it.token)}</span></span>
+      <span class="p" style="color:${pcol(it)}">${top ? '<span class="topb">TOP</span>' : ""}${pct(it.probability)}</span>
+      <span class="rk r">#${it.rank}</span>
+      <span class="chips">${chips.join("")}</span>
+      <span class="sb r">${m.self_buy === null || m.self_buy === undefined ? '<span style="color:var(--t35)">—</span>' : esc(m.self_buy) + ' <span style="color:var(--t45);font-size:10.5px">' + esc(m.quote_symbol) + "</span>"}</span>
+      <span class="dv r">${dev}</span>
+      <span class="ag r" data-ts="${m.ts || 0}">${m.ts ? ago(m.ts) : ""}</span></div>`;
+  }).join("");
+  S.known = new Set(d.items.map((it) => it.token));
+}
+
+$("rows").addEventListener("click", (e) => { const r = e.target.closest(".row"); if (r) location.hash = "#/board/" + r.dataset.token; });
+/**
+ * Copy buttons beside the setup commands.
+ *
+ * Delegated from the document rather than bound per button, because these pages are static markup
+ * that never re-renders; binding once at load is enough and stays correct if more are added.
+ */
+document.addEventListener("click", async (e) => {
+  const b = e.target.closest("[data-copy]");
+  if (!b) return;
+  const code = b.parentElement && b.parentElement.querySelector("code");
+  if (!code) return;
+  const ok = await copyText(code.textContent);
+  b.textContent = ok ? "copied" : "press ctrl+c";
+  setTimeout(() => { b.textContent = "copy"; }, 1400);
+});
+
+document.querySelectorAll(".f[data-f]").forEach((f) => f.onclick = () => { S.filter = f.dataset.f; renderBoard(); });
+
+/* ── settings ── */
+/**
+ * Thresholds the reader sets, kept on their machine.
+ *
+ * The score floor and the window go to the server rather than being applied here, because the feed
+ * is capped at 150 rows: filtering a capped list only thins what already fit, so a floor applied in
+ * the browser would silently miss everything past the cap. The chips above stay client-side, since
+ * they narrow rather than reach.
+ */
+function syncSettings() {
+  $("settings").hidden = !S.settingsOpen;
+  $("gear").classList.toggle("on", S.settingsOpen);
+  if (document.activeElement !== $("s-min")) $("s-min").value = S.minScore;
+  $("s-win").value = String(S.hours);
+  const off = S.minScore === 0 && S.hours === 6;
+  $("s-foot").textContent = off ? "showing every launch" : "kept on this machine, nothing is sent anywhere";
+}
+
+let minTimer = 0;
+$("gear").onclick = () => {
+  S.settingsOpen = !S.settingsOpen;
+  localStorage.setItem("augur.settingsOpen", S.settingsOpen ? "1" : "0");
+  syncSettings();
+};
+$("s-min").oninput = () => {
+  S.minScore = Math.min(99, Math.max(0, Number($("s-min").value) || 0));
+  localStorage.setItem("augur.minScore", String(S.minScore));
+  syncSettings();
+  // Debounced: this fires on every keystroke, and each reload is a scored pass over the window.
+  clearTimeout(minTimer);
+  minTimer = setTimeout(loadFeed, 350);
+};
+$("s-win").onchange = () => {
+  S.hours = Number($("s-win").value);
+  localStorage.setItem("augur.hours", String(S.hours));
+  syncSettings();
+  loadFeed();
+};
+$("s-reset").onclick = () => {
+  S.minScore = 0;
+  S.hours = 6;
+  localStorage.removeItem("augur.minScore");
+  localStorage.removeItem("augur.hours");
+  syncSettings();
+  loadFeed();
+};
+syncSettings();
+$("m-score").onclick = () => setOrder("score");
+$("m-new").onclick = () => setOrder("new");
+$("pause").onclick = () => { S.paused = !S.paused; renderBoard(); if (!S.paused) loadFeed(); };
+function setOrder(o) { if (o === S.order) return; S.order = o; localStorage.setItem("augur.order", o); S.known = new Set(); loadFeed(); }
+
+/* ── resizable panel ── */
+$("board").style.setProperty("--panelW", S.panelW + "px");
+$("divider").addEventListener("mousedown", (e) => {
+  e.preventDefault(); const grid = $("board"); grid.classList.add("dragging");
+  const move = (ev) => { S.panelW = Math.max(380, Math.min(720, grid.getBoundingClientRect().right - ev.clientX)); grid.style.setProperty("--panelW", S.panelW + "px"); };
+  const up = () => { grid.classList.remove("dragging"); localStorage.setItem("augur.panelW", S.panelW); window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", up); };
+  window.addEventListener("mousemove", move); window.addEventListener("mouseup", up);
+});
+
+/* ── card ── */
+/**
+ * Opening a card also starts work the card cannot wait for.
+ *
+ * The server reads this launch's own curve before answering, but a creator's earlier curves are
+ * fetched in the background afterwards, six at a time. The reply is therefore a snapshot taken
+ * before that finishes, and the card used to keep it forever: the curves were read seconds later
+ * and the panel went on saying they were not, for as long as the reader left it open.
+ *
+ * So a card with reading still outstanding asks again, a few times, backing off. It stops as soon
+ * as nothing is outstanding, when the reader moves to another launch, or after the last attempt,
+ * and it never blocks the first render.
+ */
+const REFETCH_DELAYS_MS = [4000, 10000];
+
+async function fetchCard(token) {
+  const r = await fetch("/api/token/" + token);
+  if (!r.ok) throw new Error("card " + r.status);
+  return r.json();
+}
+
+function outstanding(d) {
+  const h = d && d.card && d.card.creatorHistory;
+  return h ? h.unread > 0 : false;
+}
+
+async function openCard(token) {
+  S.sel = token;
+  document.querySelectorAll(".row").forEach((r) => r.classList.toggle("sel", r.dataset.token === token));
+  $("panel").innerHTML = '<div class="empty">loading the card and indexing its curve…</div>';
+  let d;
+  try { d = await fetchCard(token); } catch { $("panel").innerHTML = '<div class="empty">not found</div>'; return; }
+  if (S.sel !== token) return;
+  S.card = d; renderCard();
+
+  for (const wait of REFETCH_DELAYS_MS) {
+    if (!outstanding(S.card) || S.sel !== token) return;
+    await new Promise((r) => setTimeout(r, wait));
+    if (S.sel !== token) return;
+    let next;
+    try { next = await fetchCard(token); } catch { return; }
+    if (S.sel !== token) return;
+    S.card = next; renderCard();
+  }
+}
+
+function gradeOf(n, g) {
+  if (!n) return { L: "—", txt: "first launch", c: "var(--t5)", b: "var(--l15)", bg: "transparent" };
+  const r = g / n;
+  const L = r >= 0.75 ? "A" : r >= 0.5 ? "B" : g > 0 ? "C" : "D";
+  const c = r >= 0.5 ? "var(--lime)" : g > 0 ? "var(--amber)" : "var(--red)";
+  const b = r >= 0.5 ? "rgba(204,255,0,.4)" : g > 0 ? "rgba(232,184,58,.4)" : "rgba(255,107,87,.4)";
+  const bg = r >= 0.5 ? "rgba(204,255,0,.08)" : g > 0 ? "rgba(232,184,58,.08)" : "rgba(255,107,87,.08)";
+  return { L, txt: `${g}/${n} graduated`, c, b, bg };
+}
+
+function renderCard() {
+  const { card: k, score: s } = S.card; const L = k.launch, C = k.cluster, T = k.trading, H = k.creatorHistory, A_ = k.ath, P = k.pool;
+  const fact = (key, val, cls = "", href = "") => `<div class="fact"><span class="k">${key}</span><span class="v ${cls}" title="${esc(val.replace(/<[^>]+>/g, ""))}">${val}</span>${href ? `<a class="x" href="${href}" target="_blank" rel="noopener">↗</a>` : "<span></span>"}</div>`;
+  const A = (a) => `${EXP}/address/${a}`;
+  const g = gradeOf(H.priorLaunches, H.priorGraduations);
+  const calledVia = L.selfBuy !== null ? "pons router · calldata decoded"
+    : L.viaContract ? `${short(L.calledBy)} · calldata not decoded` : "not through the router · calldata not decoded";
+  const clusterTxt = C.total <= 1 ? "unique, no other launch used this ticker"
+    : `${C.kind === "swarm" ? "swarm" : "one wallet repeating"} · ${C.total} launches, ${C.graduated} reached the pool`;
+  const feesTxt = k.fees.recipient ? `${short(k.fees.recipient)}${k.fees.redirected ? " · routed away from the launcher" : " (creator)"}` : "unknown";
+  const soc = k.socials || {};
+  const hasX = soc.twitter, hasWeb = soc.website;
+  const rate = H.priorLaunches ? Math.round(100 * H.priorGraduations / H.priorLaunches) + "%" : "—";
+
+  const reasons = s ? s.reasons.map((r) => `<div class="${r.direction}"><i>${r.direction === "up" ? "+" : "−"}</i><span>${esc(r.text[0].toUpperCase() + r.text.slice(1))}</span></div>`).join("") : "";
+  // Their highest climbers across every curve of theirs that has been read, not just the recent ten.
+  const bestList = (H.topPeaks && H.topPeaks.length)
+    ? `<div class="thead"><span class="lbl">Their best launches<i>${(H.priorLaunches - H.unread) + "/" + H.priorLaunches + " read"}</i></span><span style="text-align:right">Peak reached</span><span></span></div>` +
+      H.topPeaks.map((p) => `<div class="trow"><b>${esc(p.symbol || short(p.token))}</b><span class="w">${ago(p.ts)} ago · ${p.graduated ? "reached the pool" : "did not"}</span><span class="o ${p.multiple >= 3 ? "g" : ""}">${p.usd ? esc(p.usd) : "×" + p.multiple.toFixed(2)}</span><a href="${EXP}/token/${p.token}" target="_blank" rel="noopener">↗</a></div>`).join("")
+    : "";
+  const past = H.recent.length
+    ? `<div class="thead"><span class="lbl">Earlier</span><span style="text-align:right">Peak reached</span><span></span></div>` +
+      H.recent.slice(0, 5).map((p) => `<div class="trow"><b>${esc(p.symbol || short(p.token))}</b><span class="w">${ago(p.ts)} ago · ${p.graduated ? "reached the pool" : "did not"}</span><span class="o ${p.peakMultiple === null ? "n" : p.peakMultiple >= 3 ? "g" : ""}">${p.peakMultiple === null ? (p.read ? "no trades" : "not read") : (p.peakUsd ? esc(p.peakUsd) : "×" + p.peakMultiple.toFixed(2))}</span><a href="${EXP}/token/${p.token}" target="_blank" rel="noopener">↗</a></div>`).join("")
+    : `<div class="note">${H.priorLaunches === 0 ? "First launch from this wallet." : "No earlier launches on record."}</div>`;
+
+  /* sections the design does not have, kept because the tool does */
+  const trading = !T.indexed ? `<div class="note">Trading on the curve not indexed yet. Reopen the card in a moment.</div>` : `
+    ${fact("Trades", `${T.buys} buys · ${T.sells} sells`)}
+    ${fact("Buyers", `${T.buyersTotal} total · <b>${T.buyersFirstMinute}</b> in the first minute`)}
+    ${fact("Opening tax paid", T.snipers.length ? `${esc(T.snipeTaxTotal)} ${esc(L.quoteSymbol)} by ${new Set(T.snipers.map((x) => x.address)).size} wallet(s)` : "nobody raced the window")}
+    ${fact("Peak on the curve", T.peakMultiple === null ? "nothing has traded on the curve yet" : (T.peakUsd ? esc(T.peakUsd) : `×${T.peakMultiple.toFixed(2)} above its first trade`))}
+    ${P ? fact("Peak in the pool", !P.tracked ? "pool found, swaps not read yet" : P.peakUsd ? `${esc(P.peakUsd)}${P.lastUsd ? ` · ${esc(P.lastUsd)} now · ${P.swaps.toLocaleString()} swaps` : ""}` : "no swaps yet", P.tracked && P.peakUsd ? "lime" : "") : ""}
+    ${T.coBuyers.length ? `<div class="sec"><span class="k">Bought inside the launch tx</span></div><div class="list2">${T.coBuyers.map((b) => `<div class="li"><span><a href="${A(b.address)}" target="_blank" rel="noopener">${short(b.address)}</a></span><span class="m">${esc(b.amount)} ${esc(L.quoteSymbol)}</span></div>`).join("")}</div>` : ""}
+    ${T.snipers.length ? `<div class="sec"><span class="k">Raced the 3-second window</span></div><div class="list2">${T.snipers.slice(0, 8).map((x) => `<div class="li"><span><a href="${A(x.address)}" target="_blank" rel="noopener">${short(x.address)}</a>${x.onExemptList ? '<span class="x r">on exempt list</span>' : ""}</span><span class="m">+${x.blocksAfterLaunch} blk · paid ${esc(x.tax)}</span></div>`).join("")}</div>` : ""}
+    ${T.topWallets.length ? `<div class="sec"><span class="k">Biggest wallets, by money in</span></div><div class="list2">${T.topWallets.slice(0, 8).map((p) => `<div class="li"><span><a href="${A(p.address)}" target="_blank" rel="noopener">${short(p.address)}</a>${p.multiple !== null ? `<span class="x ${p.multiple >= 1 ? "l" : "r"}">×${p.multiple.toFixed(2)}</span>` : ""}</span><span class="m">in ${esc(p.inAmount)} · out ${esc(p.outAmount)}</span></div>`).join("")}</div>` : ""}`;
+  const exemptList = k.exemptions.length ? `<div class="sec"><span class="k">Wallets exempted from the opening tax</span></div><div class="list2">${k.exemptions.map((e) => `<div class="li"><span><a href="${A(e.address)}" target="_blank" rel="noopener">${short(e.address)}</a></span><span class="m">${e.seenInOtherLaunches ? "seen in " + e.seenInOtherLaunches + " other launch(es)" : "not seen elsewhere"}</span></div>`).join("")}</div>` : "";
+  const siblings = C.total > 1 ? `<div class="sec"><span class="k">Same ticker</span><span class="v">${C.distinctCreators} creators · ${C.before} before this one</span></div><div class="list2">${C.siblings.slice(0, 8).map((sb) => `<div class="li"><span><a href="${EXP}/token/${sb.token}" target="_blank" rel="noopener">${esc(sb.symbol || short(sb.token))}</a>${sb.graduated ? '<span class="x g">pool</span>' : ""}${sb.sameCreator ? '<span class="x r">same creator</span>' : ""}</span><span class="m">${ago(sb.ts)} ago</span></div>`).join("")}</div>` : "";
+  const feeChanges = k.fees.changes.length ? `<div class="sec"><span class="k">Fee recipient changed</span></div><div class="list2">${k.fees.changes.map((c) => `<div class="li"><span>${short(c.prev)} → ${short(c.next)}</span><span class="m"><a href="${c.txUrl}" target="_blank" rel="noopener">tx ↗</a></span></div>`).join("")}</div>` : "";
+
+  $("panel").innerHTML = `
+    <div class="phead"><span class="cdot" style="background:${hue(k.token)}"></span><b>${esc(k.symbol || "?")}</b><span class="nm">${esc(k.name || "")}</span><div class="spacer"></div><span class="t">${hhmmss(L.ts)}</span>
+      <span class="grade" title="Creator record from past launches" style="--gc:${g.c};--gb:${g.b};--gbg:${g.bg}"><i>${g.L}</i><span>${g.txt}</span></span></div>
+    <div class="ptop">
+      <div class="bigs">
+        <div class="big lime"><div class="k">Graduate</div><div class="v">${s ? pct(s.probability) : "—"}</div></div>
+        <div class="big line" title="${A_ && A_.available ? `A range rather than a figure. This band aims at the middle half and covered ${(100 * A_.coverage).toFixed(0)}% of launches the model never saw, and its rank correlation with the real peak is ${A_.spearman.toFixed(2)}. The peak counted is the pool's where a launch graduated and the curve's where it did not.` : "Needs the peak model. Run npm run curves, then npm run train"}">
+          <div class="k">Peak, likely range</div>
+          <div class="v">${A_ && A_.available && A_.loUsd ? `${esc(A_.loUsd)}–${esc(A_.hiUsd)}` : A_ && A_.available ? `×${A_.loMultiple.toFixed(1)}–${A_.hiMultiple.toFixed(1)}` : "—"}</div>
+        </div>
+      </div>
+      <div class="reasons">${reasons}</div>
+      <div class="subline">rank <b>#${s ? s.rank : "—"}</b> of ${s ? s.of.toLocaleString() : "—"} in the last 6h${A_ && A_.available ? ` · peak model expects <b>${esc(A_.pointUsd || "×" + A_.multiple.toFixed(1))}</b>${A_.tailChance !== null ? ` · ${(100 * A_.tailChance).toFixed(0)}% chance of ×10+` : ""}` : ""}</div>
+    </div>
+    <div class="pbody">
+      ${fact("Creator (tx.from)", L.creator ? short(L.creator) : "unknown", "", L.creator ? A(L.creator) : "")}
+      ${fact("Called via", calledVia, L.selfBuy === null ? "amb" : "")}
+      ${fact("Self-buy", L.selfBuy === null ? "not declared" : `${esc(L.selfBuy)} ${esc(L.quoteSymbol)}` + (k.selfBuyShare !== null && k.selfBuyShare !== undefined ? ` · ${k.selfBuyShare.toFixed(1)}% of supply` : ""), k.selfBuyShare >= 10 ? "warn" : "")}
+      ${fact("Exempt wallets", k.exemptions.length === 0 ? "none" : `${k.exemptions.length} · seen elsewhere: ${k.exemptions.filter((e) => e.seenInOtherLaunches > 0).length}`, k.exemptions.length >= 3 ? "warn" : "")}
+      ${fact("Fees go to", feesTxt, k.fees.redirected ? "warn" : "", k.fees.recipient ? A(k.fees.recipient) : "")}
+      ${fact("Creator tax", L.creatorTaxBps === null ? "unknown" : (L.creatorTaxBps / 100).toFixed(2) + "%")}
+      ${fact("Quote asset", `${esc(L.quoteSymbol)} · ${L.quoteDecimals} dec${L.isEthQuoted ? "" : " · token"}`, L.isEthQuoted ? "" : "amb", L.isEthQuoted ? "" : `${EXP}/token/${L.quoteAsset}`)}
+      ${fact("Graduation needs", `${esc(L.threshold)} ${esc(L.quoteSymbol)}`)}
+      ${fact("Name cluster", clusterTxt, C.kind === "repeat-spam" ? "warn" : "")}
+      ${fact("Outcome", k.outcome.graduated ? `reached the pool${k.outcome.secondsToGraduate !== null ? " after " + secs(k.outcome.secondsToGraduate) : ""}` : ["on the curve", "swept", "in the pool", "rescued"][k.outcome.phase] || "?", "", k.outcome.graduationTxUrl || "")}
+      <div class="soc"><span class="k">Socials</span><span class="b">${hasX ? `<a href="${esc(soc.twitter)}" target="_blank" rel="noopener"><b>𝕏</b>Twitter ↗</a>` : ""}${hasWeb ? `<a href="${esc(soc.website)}" target="_blank" rel="noopener"><b>⌂</b>Website ↗</a>` : ""}${!hasX && !hasWeb ? '<span class="none">none declared</span>' : ""}</span></div>
+      <div class="sec"><span class="k">Creator</span><span class="v">${L.creator ? L.creator : "—"}</span>${L.creator ? `<a href="${A(L.creator)}" target="_blank" rel="noopener">↗</a>` : ""}</div>
+      <div class="stat3"><div><b>${H.priorLaunches}</b><span>launches before</span></div><div class="lime"><b>${H.priorGraduations}</b><span>graduated · ${rate}</span></div>
+        <div${H.bestPeak ? ' class="lime"' : ""}><b>${H.bestPeak ? (H.bestPeak.usd ? esc(H.bestPeak.usd) : "×" + H.bestPeak.multiple.toFixed(1)) : "—"}</b><span>${H.bestPeak ? "best peak · " + esc(H.bestPeak.symbol || short(H.bestPeak.token)) : H.unread + (H.unread === 1 ? " curve not read" : " curves not read")}</span></div></div>
+      ${bestList}
+      ${past}
+      <div class="sec"><span class="k">Trading on the curve</span></div>
+      ${trading}
+      ${exemptList}${siblings}${feeChanges}
+      <div class="copy"><button id="copyca">Copy contract address</button><div class="full">${k.token}</div></div>
+    </div>`;
+  $("copyca").onclick = () => { navigator.clipboard && navigator.clipboard.writeText(k.token); const b = $("copyca"); b.textContent = "Contract copied ✓"; b.classList.add("done"); setTimeout(() => { b.textContent = "Copy contract address"; b.classList.remove("done"); }, 1500); };
+}
+
+/* ── home stats ── */
+async function loadStats() {
+  let d; try { d = await (await fetch("/api/stats")).json(); } catch { return; }
+  $("k-base").textContent = d.baseRate === null ? "—" : (100 * d.baseRate).toFixed(1) + "%";
+  $("k-median").textContent = d.medianSecToGraduate === null ? "—" : d.medianSecToGraduate < 600 ? d.medianSecToGraduate + " s" : Math.round(d.medianSecToGraduate / 60) + " min";
+  $("k-lift").textContent = d.decileLift === null ? "—" : d.decileLift.toFixed(2) + "×";
+  renderRoadmap(d);
+}
+
+/** Dollars, the same shape the server prints them in, so a page and a card agree. */
+function usd(v) {
+  if (v === null || v === undefined || !isFinite(v)) return "—";
+  if (v >= 1e9) return "$" + (v / 1e9).toFixed(1) + "B";
+  if (v >= 1e6) return "$" + (v / 1e6).toFixed(1) + "M";
+  if (v >= 1e3) return "$" + Math.round(v / 1e3) + "K";
+  return "$" + Math.round(v);
+}
+
+/* ── coin page ── */
+/**
+ * The coin the site is about.
+ *
+ * Which token that is comes from configuration, because $AUGUR does not exist yet and a coin
+ * page is only worth reading if its numbers are real. Until it launches this shows a token that
+ * did, and says so at the top rather than quietly presenting somebody else's figures as ours.
+ */
+async function loadCoin() {
+  let d;
+  try {
+    const r = await fetch("/api/coin");
+    if (!r.ok) return;
+    d = await r.json();
+  } catch { return; }
+
+  const box = $("coin-standin");
+  if (!d.configured || !d.found) {
+    box.innerHTML = '<div class="notyet"><b>Not launched.</b> There is no $AUGUR contract yet, so there is nothing to show here. Anything claiming to be $AUGUR before an address appears on this page is not ours.</div>';
+    return;
+  }
+
+  const sym = d.symbol || short(d.token);
+  box.innerHTML = "";
+
+  $("coin-crumb").textContent = "coin / " + sym + " / robinhood chain 4663";
+  $("coin-state").hidden = !d.graduated;
+
+  const px = d.pool && d.pool.lastUsd !== null ? d.pool.lastUsd / d.supply : null;
+  $("coin-px").textContent = px === null ? "\u2014" : "$" + px.toPrecision(2);
+
+  // Change is measured from the opening price, not from a rolling window: no price series survives
+  // graduation, so "last 24h" is not something this can honestly claim.
+  const ch = $("coin-ch");
+  const c6 = d.pool2 && d.pool2.change6h;
+  if (c6 && px !== null) {
+    const was = c6.from / d.supply;
+    ch.textContent = (c6.pct >= 0 ? "+" : "") + c6.pct.toFixed(1) + "%  \u00b7  " +
+      (px - was >= 0 ? "+" : "\u2212") + Math.abs(px - was).toPrecision(2) + "  last 6 hours";
+    ch.className = "ch " + (c6.pct >= 0 ? "up" : "dn");
+  } else ch.textContent = "";
+
+  $("coin-fdv").textContent = d.pool && d.pool.lastUsd !== null
+    ? "market cap " + usd(d.pool.lastUsd) + " \u00b7 " + d.supply.toLocaleString() + " supply" : "";
+
+  const cell = (k, v, dim) => '<div><div class="k">' + k + '</div><div class="v' + (dim ? " dim" : "") + '">' + v + "</div></div>";
+  const p2 = d.pool2;
+  $("coin-strip").innerHTML =
+    cell("Creator fees", d.fees && d.fees.usd !== null ? usd(d.fees.usd) : "\u2014") +
+    cell("24h volume", p2 && p2.vol24hUsd !== null ? usd(p2.vol24hUsd) : "\u2014") +
+    cell("24h swaps", p2 ? p2.swaps24h.toLocaleString() : "\u2014") +
+    cell("Peak", d.pool ? usd(d.pool.peakUsd) : "\u2014") +
+    cell("Pool", "Uniswap v4") +
+    cell("Tick", p2 && p2.tick !== null ? String(p2.tick) : "\u2014");
+
+  drawCoinChart(d);
+
+  const tax = d.creatorTaxBps === null ? "unknown" : (d.creatorTaxBps / 100).toFixed(2) + "%";
+  const step = (n, b, sp, v) => '<div class="s"><span class="n">' + n + "</span><b>" + b + "</b><em>" + sp + '</em><span class="val">' + v + "</span></div>";
+  $("coin-fee").innerHTML = '<span class="rule"></span>' +
+    step("01", "swap", "every trade in the pool", esc(tax) + " creator fee") +
+    step("02", "pons hook", "accrues it off-pool, then sweeps", esc(short(d.token))) +
+    step("03", "recipient", "set at launch, public", d.feeRecipient ? esc(short(d.feeRecipient)) : "not declared") +
+    step("04", "swept so far", d.fees ? d.fees.sweeps.toLocaleString() + " sweeps to date" : "nothing read yet",
+      d.fees ? d.fees.quote.toFixed(3) + " " + esc(d.quoteSymbol) : "\u2014");
+
+  const fees = d.fees;
+  // Each sweep is dated from its block: the chain runs at a known rate, so a block number converts
+  // to a time without another request, and a date reads better than a block does.
+  const SEC_PER_BLOCK = 86400 / 856582;
+  const headBlock = d.pool2 ? d.pool2.coveredTo : null;
+  const when = (b) => {
+    if (headBlock === null) return "block " + b.toLocaleString();
+    const dt = new Date(Date.now() - (headBlock - b) * SEC_PER_BLOCK * 1000);
+    return dt.toISOString().slice(5, 10).replace("-", "/") + " \u00b7 " + dt.toISOString().slice(11, 16);
+  };
+  $("coin-ledger").innerHTML = fees && fees.recent.length
+    ? fees.recent.map((s) => '<div class="r"><span class="w">' + when(s.block) +
+        '</span><span class="d">creator fee swept</span><span class="a">' +
+        s.quote.toFixed(4) + " " + esc(d.quoteSymbol) + "</span></div>").join("")
+    : '<div class="r"><span class="w">\u2014</span><span class="d">no sweeps read yet</span><span class="a"></span></div>';
+  $("coin-ledger-since").textContent = fees ? fees.sweeps.toLocaleString() + " sweeps to date" : "";
+  $("coin-lg").textContent = sym.replace(/^\$/, "").slice(0, 1).toUpperCase();
+  $("coin-name").textContent = "$" + sym.replace(/^\$/, "");
+  $("coin-sub").textContent = (d.pool && d.pool.lastUsd !== null ? "market cap " + usd(d.pool.lastUsd) + " \u00b7 " : "") + "quoted in " + d.quoteSymbol;
+  // Only links that were checked. Dexscreener addresses a pons market by pool id, which their API
+  // confirmed for this token; pons keys its own page off the launchpad path, not /token.
+  $("coin-buy").href = "https://app.uniswap.org/swap?outputCurrency=" + d.token;
+  const out = (href, text) => '<a href="' + href + '" target="_blank" rel="noopener">' + text + " \u2197</a>";
+  $("coin-links").innerHTML =
+    (d.poolId ? out("https://dexscreener.com/robinhood/" + d.poolId, "dex screener") : "") +
+    out(EXP + "/token/" + d.token, "explorer") +
+    out("https://www.ponsfamily.com/launchpad/" + d.token, "pons") +
+    '<a href="#/board/' + d.token + '">board card</a>';
+  $("coin-last").textContent = d.graduated
+    ? (d.secondsToGraduate !== null ? secs(d.secondsToGraduate) + " after launch" : "yes") : "not yet";
+
+  const row = (k, v, href) => '<div class="r"><span class="k">' + k + '</span><span class="v">' +
+    (href ? '<a href="' + href + '" target="_blank" rel="noopener">' + v + "</a>" : v) + "</span></div>";
+  $("coin-verify").innerHTML =
+    row("contract", esc(d.token), EXP + "/token/" + d.token) +
+    row("creator", esc(short(d.creator)), EXP + "/address/" + d.creator) +
+    row("fee recipient", d.feeRecipient ? esc(short(d.feeRecipient)) : "not declared",
+        d.feeRecipient ? EXP + "/address/" + d.feeRecipient : "") +
+    row("quote asset", esc(d.quoteSymbol)) +
+    row("supply", d.supply.toLocaleString()) +
+    row("self-buy", d.selfBuy === null ? "not declared" : esc(d.selfBuy) + " " + esc(d.quoteSymbol)) +
+    row("exempt wallets", String(d.exemptCount)) +
+    // The cap, and only the cap. This row used to be labelled "graduated" and show "4.2 ETH", which
+    // reads as the valuation a launch graduates at and is not: that is the reserve which has to flow
+    // into the curve. Showing both put a number here that answers a question nobody asked, so the
+    // reserve is gone and what remains is the figure a reader is actually holding this against.
+    row("graduation bar", d.gradCapUsd ? "about " + esc(d.gradCapUsd) + " market cap" : "—") +
+    row("graduated", d.graduationTx
+        ? "yes" + (d.secondsToGraduate !== null ? ", after " + secs(d.secondsToGraduate) : "")
+        : "not yet",
+        d.graduationTx ? EXP + "/tx/" + d.graduationTx : "") +
+    // Who stands behind the name, so an address can be checked against an account and not only
+    // against this page. A page vouching for itself is worth nothing to somebody deciding.
+    (d.x ? row("account", "@" + esc(d.x), "https://x.com/" + encodeURIComponent(d.x)) : "") +
+    (d.repo ? row("code", esc(d.repo), d.repo.startsWith("http") ? d.repo : "https://" + d.repo) : "");
+
+  $("coin-copy").onclick = async () => {
+    const ok = await copyText(d.token);
+    $("coin-copy").textContent = ok ? "Copied" : "Ctrl+C";
+    setTimeout(() => { $("coin-copy").textContent = "Copy"; }, 1400);
+  };
+}
+
+/**
+ * The price path, drawn from the only series that exists.
+ *
+ * Every curve trade carries what was paid and what came back, so a price falls straight out of each
+ * log and the opening act can be charted exactly. It stops at graduation: after that the token
+ * trades in the pool, and the pool stream is folded to a high, low and last the moment it is read.
+ * Charting the part we have and labelling it beats interpolating the part we do not.
+ */
+/**
+ * The price, over a window the reader picks.
+ *
+ * Two sources meeting at graduation: the curve's own trades, where a price falls out of every log,
+ * and the pool's bars afterwards. "all" shows both and runs from four thousand dollars to two and a
+ * half million, which needs a log axis or the curve flattens into the bottom row of pixels. The
+ * shorter windows are pool-only and near enough linear, so they get a linear one and read the way a
+ * price chart is expected to.
+ */
+const TF = [
+  { k: "6h", label: "6h", blocks: 214146 },
+  { k: "24h", label: "24h", blocks: 856582 },
+  { k: "all", label: "all", blocks: null },
+];
+let coinTf = "6h";
+
+function drawCoinChart(d) {
+  const host = $("coin-chart"), ax = $("coin-ax"), rng = $("coin-rng"), lbl = $("coin-chart-lbl");
+
+  const curve = (d.curve || []).filter((p) => p && p.usd > 0);
+  const pool = ((d.pool2 && d.pool2.bars) || []).filter((p) => p && p.usd > 0);
+
+  $("coin-tf").innerHTML = TF.map((f) =>
+    '<button data-tf="' + f.k + '"' + (f.k === coinTf ? ' class="on"' : "") + ">" + f.label + "</button>").join("");
+  $("coin-tf").querySelectorAll("button").forEach((b) => {
+    b.onclick = () => { coinTf = b.dataset.tf; drawCoinChart(d); };
+  });
+
+  const win = TF.find((f) => f.k === coinTf) || TF[0];
+  const head = pool.length ? pool[pool.length - 1].b : (curve.length ? curve[curve.length - 1].b : 0);
+  const pts = win.blocks === null ? curve.concat(pool) : pool.filter((p) => p.b >= head - win.blocks);
+  const logScale = win.blocks === null;
+
+  if (pts.length < 2) {
+    host.innerHTML = '<div style="height:280px;display:flex;align-items:center;justify-content:center;color:var(--t35);font:12px var(--mono)">nothing read for this window</div>';
+    ax.textContent = ""; rng.innerHTML = ""; lbl.textContent = "";
+    return;
+  }
+
+  const W = 1000, H = 280, pad = { l: 8, r: 78, t: 14, b: 12 };
+  const lo = Math.min(...pts.map((p) => p.usd)), hi = Math.max(...pts.map((p) => p.usd));
+  const L = (v) => (logScale ? Math.log10(Math.max(v, 1e-9)) : v);
+  const lo2 = L(lo), span = (L(hi) - lo2) || 1;
+  const x = (i) => pad.l + (i * (W - pad.l - pad.r)) / (pts.length - 1);
+  const y = (v) => pad.t + (H - pad.t - pad.b) * (1 - (L(v) - lo2) / span);
+
+  const line = pts.map((p, i) => (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.usd).toFixed(1)).join(" ");
+  const area = line + " L" + x(pts.length - 1).toFixed(1) + " " + (H - pad.b) + " L" + pad.l + " " + (H - pad.b) + " Z";
+
+  // Four labelled gridlines, each naming a price the chart reaches, on the right where the design
+  // puts them.
+  const grid = [0, 1, 2, 3].map((k) => {
+    const v = logScale ? 10 ** (lo2 + (span * k) / 3) : lo2 + (span * k) / 3;
+    const yy = y(v).toFixed(1);
+    return '<line x1="' + pad.l + '" x2="' + (W - pad.r) + '" y1="' + yy + '" y2="' + yy + '" stroke="rgba(255,255,255,.07)" stroke-dasharray="2 4"/>' +
+      '<text x="' + (W - pad.r + 9) + '" y="' + (Number(yy) + 3.5) + '" fill="rgba(255,255,255,.35)" font-family="ui-monospace,monospace" font-size="11">' +
+      (logScale ? usd(v) : "$" + (v / d.supply).toPrecision(2)) + "</text>";
+  }).join("");
+
+  const gi = logScale && curve.length && pool.length ? curve.length - 1 : -1;
+  const mark = gi < 0 ? "" : (() => {
+    const gx = x(gi).toFixed(1);
+    return '<line x1="' + gx + '" x2="' + gx + '" y1="' + pad.t + '" y2="' + (H - pad.b) +
+      '" stroke="rgba(255,255,255,.22)" stroke-dasharray="3 3"/>' +
+      '<text x="' + (Number(gx) + 6) + '" y="' + (pad.t + 12) + '" fill="rgba(255,255,255,.4)" font-family="ui-monospace,monospace" font-size="10">reached the pool</text>';
+  })();
+
+  host.innerHTML =
+    '<svg viewBox="0 0 ' + W + " " + H + '" preserveAspectRatio="none" role="img" aria-label="price">' +
+    '<defs><linearGradient id="cg" x1="0" x2="0" y1="0" y2="1">' +
+    '<stop offset="0%" stop-color="#ccff00" stop-opacity=".34"/><stop offset="100%" stop-color="#ccff00" stop-opacity="0"/>' +
+    "</linearGradient></defs>" + grid +
+    '<path d="' + area + '" fill="url(#cg)"/>' +
+    '<path d="' + line + '" fill="none" stroke="#ccff00" stroke-width="1.6" stroke-linejoin="round"/>' + mark +
+    "</svg>";
+
+  // Times along the bottom, from block numbers: the chain runs at a known rate, so a block converts
+  // without another request.
+  const SEC_PER_BLOCK = 86400 / 856582;
+  const clock = (b) => {
+    const dt = new Date(Date.now() - (head - b) * SEC_PER_BLOCK * 1000);
+    return dt.toTimeString().slice(0, 5);
+  };
+  ax.innerHTML = logScale
+    ? "<span>launch</span><span>" + usd(pts[0].usd) + " \u2192 " + usd(pts[pts.length - 1].usd) + "</span><span>now</span>"
+    : [0, 0.25, 0.5, 0.75, 1].map((f) => "<span>" + clock(pts[Math.round(f * (pts.length - 1))].b) + "</span>").join("");
+
+  lbl.textContent = logScale
+    ? curve.length + " curve trades \u00b7 " + pool.length + " pool bars \u00b7 log scale"
+    : pts.length + " pool bars";
+
+  const at = ((L(pts[pts.length - 1].usd) - lo2) / span) * 100;
+  const money = (v) => (logScale ? usd(v) : "$" + (v / d.supply).toPrecision(2));
+  rng.innerHTML = '<span>low ' + money(lo) + '</span><span class="bar"><i style="left:' + at.toFixed(1) + '%"></i></span><span>high ' + money(hi) + "</span>";
+}
+
+/* ── model page ── */
+async function loadModel() {
+  let d; try { d = await (await fetch("/api/model")).json(); } catch { return; }
+  const v = d.validation, live = d.live;
+  const when = d.trainedAt ? new Date(d.trainedAt * 1000).toISOString().replace("T", " ").slice(0, 16) + " UTC" : "no model yet";
+  $("mo-h").textContent = `model ${d.modelId} · trained ${when} · ${d.featureCount} features`;
+  $("k-feat").textContent = d.featureCount;
+  const cell = (k, t, m, dd, out = false) => `<div class="cell${out ? " out" : ""}"><div class="k">${k}</div><div class="t">${t}</div><div class="m">${m}</div><div class="d">${dd}</div></div>`;
+  $("pipe").innerHTML =
+    cell("01 · stream", "Listening to the factory", "websocket + catch-up reads", "every TokenLaunched, LaunchSwept and PoolGraduated") +
+    cell("02 · facts", "Local SQLite", v ? v.rows.toLocaleString() + " launches in the trained window" : "—", "creator, self-buy, exemptions, fees, curve trades, outcome") +
+    cell("03 · features", `${d.featureCount} features`, "at T+0", "only what is known when the launch lands") +
+    cell("04 · training", "npm run train", v ? "validated " + new Date(v.at * 1000).toISOString().slice(0, 16).replace("T", " ") + " UTC" : "run: npm run validate", "rolling-origin folds, time-ordered, never random") +
+    `<div class="arrow">→</div>` +
+    cell("Output", "P(graduates)", `GBDT · ${d.featureCount} features`, "exact contribution split → 3 reasons", true);
+  const M = (k, val, dd, cls = "") => `<div class="cell metric"><div class="k">${k}</div><div class="v ${cls}">${val}</div><div class="d">${dd}</div></div>`;
+  $("metrics").innerHTML = v ? [
+    M("ROC-AUC", v.roc.mean.toFixed(3), `mean of ${v.folds.length} rolling folds`),
+    M("Top-decile lift", v.decile.mean.toFixed(2) + "×", `sd ${v.decile.sd.toFixed(2)} · worst ${v.decile.worst.toFixed(2)}×`, "lime"),
+    M("Base rate", (100 * v.positives / v.rows).toFixed(2) + "%", "launches that graduate, trained window"),
+    M("Window", `${Math.round((v.window.to - v.window.from) / 3600)} h`, new Date(v.window.from * 1000).toISOString().slice(5, 16).replace("T", " ") + " → " + new Date(v.window.to * 1000).toISOString().slice(11, 16) + " UTC"),
+    M("Folds at chance", `${v.atChance} / ${v.folds.length}`, `worst ROC ${v.roc.worst.toFixed(3)} · disclosed`, v.atChance ? "amb" : ""),
+  ].join("") : `<div class="cell" style="grid-column:1/-1;color:var(--t5)">No validation on record. Run <code>npm run validate</code> and this fills in with what it printed.</div>`;
+  const max = d.importance.length ? d.importance[0].value : 1;
+  if (d.importance && d.importance.length) $("imp").innerHTML = d.importance.slice(0, 12).map((f) => `<div class="imp"><span>${f.name.replace(/_/g, " ")}</span><span class="bar"><i style="width:${(100 * f.value / max).toFixed(0)}%"></i></span><span class="n">${f.value.toFixed(3)}</span></div>`).join("") || `<div style="color:var(--t5)">no launches on the board to measure against</div>`;
+  const row = (t, m, c = "") => `<div><span class="t">${t}</span><span class="${c}">${m}</span></div>`;
+  const sc = live.thisModel.score, all = live.allModels.score;
+  $("livelog").innerHTML = [
+    row("this model", `${live.thisModel.n} claims settled`),
+    sc ? row("top decile", `${sc.topDecileHits} of ${sc.topDecileN} graduated · ${sc.topDecileLift.toFixed(2)}× base`, sc.topDecileLift >= 2 ? "lime" : sc.topDecileLift >= 1 ? "amb" : "red") : row("top decile", "fewer than 20 settled claims, so nothing to report yet", "amb"),
+    sc ? row("ROC-AUC", sc.rocAuc.toFixed(3), sc.rocAuc >= 0.6 ? "lime" : sc.rocAuc >= 0.55 ? "amb" : "red") : "",
+    sc ? row("base rate", (100 * sc.baseRate).toFixed(2) + "%") : "",
+    row("all models", `${live.allModels.n} settled${all ? " · " + all.topDecileLift.toFixed(2) + "× top decile" : ""}`),
+    row("pending", `${live.pending} claims inside the 4-hour horizon`),
+    row("check it", `npm run verify, which exports the log and recomputes these from the file`, "lime"),
+  ].join("");
+  $("honest").textContent = v
+    ? `Honest note: across ${v.folds.length} rolling-origin folds the top decile graduated at ${v.decile.mean.toFixed(2)}× the base rate on average, ` +
+      (v.atChance ? `but ${v.atChance} fold${v.atChance > 1 ? "s were" : " was"} no better than chance (worst ROC ${v.roc.worst.toFixed(3)}). ` : "and every fold beat chance. ") +
+      `The live scoreboard on the right is the only number here written before its outcome existed. Run npm run validate after every retrain.`
+    : "Run npm run validate to see how the model holds up across time-ordered folds.";
+}
+
+/* ── copy affordances on the install block ── */
+const allCommands = () => [...document.querySelectorAll("#term .cmd")].map((c) => c.dataset.cmd).join("\n");
+document.querySelectorAll("#term .cmd .cp").forEach((btn) => {
+  btn.onclick = () => copyWithFeedback(btn, btn.closest(".cmd").dataset.cmd);
+});
+$("copy-all").onclick = () => copyWithFeedback($("copy-all"), allCommands(), "Copy all", "Copied ✓");
+
+/* ── ages tick without a refetch ── */
+setInterval(() => document.querySelectorAll("[data-ts]").forEach((el) => { const t = Number(el.dataset.ts); if (t) el.textContent = ago(t); }), 1000);
+setInterval(loadFeed, 5000);
+route();
+</script>
+</body>
+</html>

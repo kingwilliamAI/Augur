@@ -1,0 +1,20 @@
+node_modules/
+
+# One machine's collected history. Tens of megabytes that grow by 26MB a day, and every clone can
+# rebuild the part it needs in minutes: see `npm run setup`.
+data/*.db
+data/*.db-*
+data/predictions.jsonl
+
+# data/model.json is deliberately NOT ignored. It is 300KB, its size is fixed by the training
+# parameters rather than by the data, and without it a fresh clone has no scores at all — it would
+# have to collect a week of history and train before showing anything. Shipping it is the difference
+# between a tool that works in five minutes and one most people never get running.
+
+.env
+*.log
+.gstack/
+
+# Working plan for the launch, not part of the repo.
+LAUNCH-PLAN.md
+tmp/

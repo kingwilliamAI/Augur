@@ -1,0 +1,18 @@
+{
+  "asOf": "2026-09-07",
+  "note": "supplied by hand. The 16 shipped assets plus 36 more, so the 9.7% of launches quoted against an unpriced asset get dollar figures too.",
+  "usd": {
+    "ETH": 2520, "USDG": 1.0, "NVDA": 230.36, "SPCX": 147.95, "SPY": 770.19, "DJT": 9.03,
+    "GME": 19.16, "QQQ": 718.96, "RDDT": 155.99, "GLD": 406.77, "TSLA": 347, "AAPL": 319.97,
+    "cbBTC": 79850, "MSFT": 499.7, "GOOGL": 338.46, "HIMS": 27.81,
+
+    "AMZN": 258.51, "COIN": 184.64, "LULU": 100.61, "TTWO": 214.69, "META": 616.77,
+    "AMD": 477.57, "RBLX": 43.31, "PLTR": 174.33, "SGOV": 100.5, "MSTR": 142.80,
+    "COST": 915.74, "CRCL": 102.05, "AMC": 2.64, "SNAP": 5.80, "SNDK": 1740,
+    "LLY": 1149, "BABA": 113.27, "BB": 7.71, "MU": 1017, "UPS": 102.29,
+    "BULL": 9.85, "MRVL": 223.55, "IBM": 234.89, "NFLX": 78.25, "F": 14.62,
+    "TSM": 415.15, "JNJ": 275.23, "INDA": 49.80, "SKHY": 164.24, "SHOP": 144.80,
+    "MRNA": 145.55, "SLV": 59.87, "BE": 252.87, "WYFI": 18.8, "PFE": 28.45,
+    "DELL": 524.14
+  }
+}

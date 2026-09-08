@@ -1,0 +1,43 @@
+{
+  "name": "augur",
+  "version": "0.1.0",
+  "private": false,
+  "license": "MIT",
+  "type": "module",
+  "description": "Local, open-source scanner for pons v2 launches on Robinhood Chain. Scores a fresh launch's chance of graduating to the pool, and shows every fact behind it.",
+  "engines": {
+    "node": ">=22.6"
+  },
+  "scripts": {
+    "icon": "node --no-warnings src/cli/icon.ts",
+    "doctor": "node --no-warnings src/cli/doctor.ts",
+    "setup": "node --no-warnings src/cli/setup.ts",
+    "backfill": "node --no-warnings src/cli/backfill.ts",
+    "enrich-window": "node --no-warnings src/cli/enrich-window.ts",
+    "enrich": "node --no-warnings src/cli/enrich.ts",
+    "names": "node --no-warnings src/cli/names.ts",
+    "quotes": "node --no-warnings src/cli/quotes.ts",
+    "coin": "node --no-warnings src/cli/coin.ts",
+    "compact": "node --no-warnings src/cli/compact.ts",
+    "curves": "node --no-warnings src/cli/curves.ts",
+    "train": "node --no-warnings src/cli/train.ts",
+    "validate": "node --no-warnings src/cli/validate.ts",
+    "board": "node --no-warnings src/board.ts",
+    "watch": "node --no-warnings src/cli/watch.ts",
+    "scoreboard": "node --no-warnings src/cli/scoreboard.ts",
+    "verify": "node --no-warnings src/cli/verify.ts",
+    "stats": "node --no-warnings src/cli/stats.ts",
+    "nightly": "node --no-warnings src/cli/nightly.ts",
+    "watchdog": "node --no-warnings src/cli/watchdog.ts",
+    "recalibrate": "node --no-warnings src/cli/recalibrate.ts",
+    "test": "node --no-warnings --test",
+    "pools": "node --no-warnings src/cli/pools.ts",
+    "telegram": "node --no-warnings src/cli/telegram.ts",
+    "backtest": "node --no-warnings src/cli/backtest.ts",
+    "patterns": "node --no-warnings src/cli/patterns.ts",
+    "early": "node --no-warnings src/cli/early.ts"
+  },
+  "dependencies": {
+    "viem": "^2.56.3"
+  }
+}
