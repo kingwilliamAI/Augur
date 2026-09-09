@@ -392,6 +392,7 @@ h1{font:700 56px/1.02 Geist,sans-serif;letter-spacing:-.035em;margin:18px 0 0;te
 .card2{border:1px solid var(--l08);border-radius:10px;background:var(--bg2);padding:16px 18px}
 .card2 .top{display:flex;align-items:center;gap:11px}
 .card2 .top .lg{width:38px;height:38px;border-radius:9px;background:var(--lime);color:#111;display:flex;align-items:center;justify-content:center;font:700 16px Geist,sans-serif;margin:0}
+.lg.img{width:38px;height:38px;border-radius:9px;background:none;object-fit:contain;padding:0;margin:0;display:block}
 .card2 .top b{font:700 17px Geist,sans-serif;letter-spacing:-.01em}
 .card2 .top span{display:block;margin-top:2px;font:11px var(--mono);color:var(--t45)}
 .card2 .buy{display:flex;align-items:center;justify-content:center;height:44px;margin-top:14px;border-radius:999px;background:var(--lime);color:#111;font:600 13px Geist,sans-serif;text-align:center}
@@ -930,7 +931,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
 
       <div style="display:flex;flex-direction:column;gap:16px">
         <div class="card2">
-          <div class="top"><span class="lg" id="coin-lg">P</span><div><b id="coin-name">&mdash;</b><span id="coin-sub"></span></div></div>
+          <div class="top"><span class="lg" id="coin-lg">P</span><img class="lg img" src="/icon-128.png" alt="" onload="document.getElementById('coin-lg').style.display='none'" onerror="this.remove()"><div><b id="coin-name">&mdash;</b><span id="coin-sub"></span></div></div>
           <a class="buy" id="coin-buy" target="_blank" rel="noopener">buy on Uniswap &#8599;</a>
           <div class="lnks" id="coin-links"></div>
           <div class="last"><span>reached the pool</span><span id="coin-last">&mdash;</span></div>
