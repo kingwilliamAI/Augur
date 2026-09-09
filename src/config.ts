@@ -118,6 +118,15 @@ export const CFG = {
    * can discount it themselves rather than being asked to trust it.
    */
   traderMinClosed: num("TRADER_MIN_CLOSED", 8),
+  /**
+   * The smallest position, in dollars, that counts towards a record.
+   *
+   * Without a floor the threshold above is farmable with dust: eight round trips of fifty cents cost
+   * almost nothing and buy the same "eight closed positions" as eight real ones. Measured on an hour
+   * of live curve trades, 428 of 2,769 closed positions entered for under 0.01 ETH, and one of them
+   * printed a 79x multiple on a trade that made seventy-seven dollars — true, and not a record.
+   */
+  traderMinPositionUsd: num("TRADER_MIN_POSITION_USD", 10),
 } as const;
 
 /**

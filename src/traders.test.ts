@@ -17,6 +17,7 @@ import { join } from "node:path";
 const dir = mkdtempSync(join(tmpdir(), "augur-traders-"));
 process.env.DB_PATH = join(dir, "test.db");
 process.env.TRADER_MIN_CLOSED = "3";
+process.env.TRADER_MIN_POSITION_USD = "10";
 
 const { openDb } = await import("./db.ts");
 const T = await import("./traders.ts");
@@ -153,6 +154,26 @@ test("a position in an asset with no price is dropped rather than counted at not
   roundTrip(w, tok(80), 5, 50, T0);
   assert.equal(T.recordOf(db, w), null,
     "counting an unpriced quote asset at zero would read as a total loss and punish everyone who used it");
+});
+
+test("dust does not buy a record", () => {
+  const farmer = addr(85);
+  // Ten round trips, each doubling half a dollar. Ten closed positions by the old rule, and the
+  // multiple on any of them would have read as a spectacular trade.
+  for (let i = 0; i < 10; i++) {
+    makeToken(tok(200 + i));
+    roundTrip(farmer, tok(200 + i), 0.0001, 0.0002, T0 + i);
+  }
+  assert.equal(T.recordOf(db, farmer), null,
+    "eight round trips of fifty cents cost almost nothing and must not buy the same standing as eight real ones");
+
+  // The same wallet, trading for real, does count.
+  for (let i = 0; i < 3; i++) {
+    makeToken(tok(300 + i));
+    roundTrip(farmer, tok(300 + i), 1, 2, T0 + 100 + i);
+  }
+  const rec = T.recordOf(db, farmer)!;
+  assert.equal(rec.closed, 3, "only the positions that were decisions are counted");
 });
 
 test("a chat can watch a token and stop watching it", () => {

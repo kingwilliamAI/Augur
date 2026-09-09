@@ -85,7 +85,10 @@ export function applyTrade(db: DB, t: Trade): void {
 
 export type TraderRecord = {
   wallet: string;
-  /** Closed positions in tokens this wallet neither created nor was waived the opening tax on. */
+  /**
+   * Closed positions worth counting: in tokens this wallet neither created nor was waived the
+   * opening tax on, and large enough to have been a decision rather than dust.
+   */
   closed: number;
   wins: number;
   /** Realised profit in dollars, summed across closed positions. */
@@ -133,6 +136,10 @@ function fold(db: DB, rows: PositionRow[]): Map<string, TraderRecord> {
     // A position in an asset with no price is dropped rather than counted at zero: counting it would
     // read as a total loss and quietly punish everybody who traded an unpriced quote asset.
     if (inUsd === null || outUsd === null || inUsd <= 0) continue;
+    // And one too small to be a decision is dropped too. Otherwise the closed-position threshold is
+    // farmable with dust, and a multiple computed on a fifty-cent entry is arithmetically true and
+    // says nothing: an hour of live trades had a 79x on a position that made seventy-seven dollars.
+    if (inUsd < CFG.traderMinPositionUsd) continue;
 
     const rec = out.get(r.wallet) ?? {
       wallet: r.wallet, closed: 0, wins: 0, realisedUsd: 0, winRate: 0, bestMultiple: 0, lastTs: 0,
