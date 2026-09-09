@@ -218,6 +218,18 @@ export type FeeLedger = {
    */
   income: { curveEth: number; poolQuote: number; poolUsd: number | null; sweeps: number; quoteSymbol: string | null };
   /**
+   * What the buyback share was actually spent on.
+   *
+   * The payout can only prove that the money reached the buyback wallet; this is the half that shows
+   * it was used. Each row carries the floor the swap was allowed to settle at as well as what came
+   * back, because a fill that landed on its floor is what being front-run looks like and a ledger
+   * that stored only the outcome could not say so.
+   */
+  buybacks: {
+    count: number; spentEth: number; tokens: number; lastTs: number | null;
+    recent: Array<{ tx: string; url: string; ts: number; spentEth: number; tokens: number; onFloor: boolean }>;
+  };
+  /**
    * What the wallet itself paid out, when the split is run in software rather than by a contract.
    *
    * Kept apart from `splits` rather than merged into it, because the difference is the whole point:
@@ -296,6 +308,14 @@ export function feeLedger(db: DB, limit = 25): FeeLedger {
            coalesce(sum(CASE WHEN kind = 'team'    THEN CAST(amount_wei AS REAL) END), 0) team
     FROM payouts`).get() as { c: number; last: number | null; nodes: number; buyback: number; team: number };
 
+  const bought = db.prepare(`
+    SELECT tx, ts, spent_wei, received, min_out FROM buybacks ORDER BY ts DESC LIMIT ?`).all(limit) as
+    Array<{ tx: string; ts: number; spent_wei: string; received: string; min_out: string }>;
+  const boughtTotals = db.prepare(`
+    SELECT count(*) c, max(ts) last, coalesce(sum(spent_eth),0) spent,
+           coalesce(sum(CAST(received AS REAL)),0) tokens FROM buybacks`)
+    .get() as { c: number; last: number | null; spent: number; tokens: number };
+
   const seen = events.map((e) => e.ts).filter((t) => t > 0);
 
   // The pool half of the same fee, already indexed for the coin page.
@@ -336,6 +356,18 @@ export function feeLedger(db: DB, limit = 25): FeeLedger {
         tx: p.tx, url: EXPLORER.tx(p.tx), ts: p.ts, kind: p.kind, address: p.address,
         addressUrl: EXPLORER.address(p.address), asset: p.asset,
         amountEth: Number(BigInt(p.amount_wei)) / 1e18, bps: p.bps,
+      })),
+    },
+    buybacks: {
+      count: boughtTotals.c,
+      spentEth: boughtTotals.spent,
+      tokens: boughtTotals.tokens / 1e18,
+      lastTs: boughtTotals.last,
+      recent: bought.map((b) => ({
+        tx: b.tx, url: EXPLORER.tx(b.tx), ts: b.ts,
+        spentEth: Number(BigInt(b.spent_wei)) / 1e18,
+        tokens: Number(BigInt(b.received)) / 1e18,
+        onFloor: BigInt(b.received) > 0n && BigInt(b.received) <= BigInt(b.min_out),
       })),
     },
     income: {

@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { createPublicClient, createWalletClient, http, parseAbi, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { robinhood } from "../chain.ts";
+import { robinhood, sleep } from "../chain.ts";
 import { CFG, EXPLORER } from "../config.ts";
 import { openDb } from "../db.ts";
-import { format, parseUnits, planPayout, type Destination } from "../payout.ts";
+import { format, parseUnits, planPayout, seconds, type Destination } from "../payout.ts";
 
 /**
  * augur payout — moves what the fee wallet holds into the three wallets it is meant to fund.
@@ -22,10 +22,11 @@ import { format, parseUnits, planPayout, type Destination } from "../payout.ts";
  * Nothing reaches the ledger until a transfer is mined, so the page shows what happened rather than
  * what was attempted.
  *
- *   npm run payout                        the plan, and nothing else
- *   npm run payout -- --send              sign and broadcast it
- *   npm run payout -- --asset 0x… --send  the same for a fee paid in a token
- *   npm run payout -- --max 1 --send      cap this run at 1 whole unit
+ *   npm run payout                          the plan, and nothing else
+ *   npm run payout -- --send                sign and broadcast it
+ *   npm run payout -- --asset 0x… --send    the same for a fee paid in a token
+ *   npm run payout -- --max 1 --send        cap this run at 1 whole unit
+ *   npm run payout -- --every 3h --send     keep splitting on that cadence
  */
 const argv = process.argv.slice(2);
 const flag = (name: string): string | undefined => {
@@ -35,6 +36,8 @@ const flag = (name: string): string | undefined => {
 const SEND = argv.includes("--send");
 const ASSET = (flag("asset") ?? "").trim().toLowerCase();
 const MAX = flag("max");
+const EVERY = flag("every");
+const JITTER = flag("jitter") ?? "0";
 
 const erc20 = parseAbi([
   "function balanceOf(address) view returns (uint256)",
@@ -222,8 +225,40 @@ Set them in .env, in basis points adding up to 10000, along with the three addre
   console.log(`\n${sent} of ${plan.parts.length} transfers mined. The fees page reads them from the ledger.`);
 }
 
+/**
+ * The cadence, when this is left running rather than called by a timer.
+ *
+ * A systemd timer does the same job and survives a reboot, which is why DEPLOY.md leads with one.
+ * This exists because a machine that already runs the watcher and the bot can run the split beside
+ * them under the same supervisor, and because a failed run must not end the process: what did not
+ * go out this time is still in the wallet, and the next run splits it.
+ */
+async function every(everySec: number, jitterSec: number): Promise<void> {
+  console.log(`splitting every ${(everySec / 3600).toFixed(1)}h`
+    + (jitterSec ? `, give or take ${Math.round(jitterSec / 60)} min` : "") + "\n");
+  for (;;) {
+    try {
+      await main();
+    } catch (err) {
+      console.error(`run failed: ${(err as Error).message.slice(0, 160)}`);
+    }
+    const wait = Math.max(60, everySec + Math.round((Math.random() * 2 - 1) * jitterSec));
+    console.log(`
+next run in ${(wait / 60).toFixed(0)} min
+${"─".repeat(60)}
+`);
+    await sleep(wait * 1000);
+  }
+}
+
 try {
-  await main();
+  if (EVERY && seconds(EVERY) < 60) {
+    // A misread interval is the difference between four runs a day and a run a minute, each one
+    // paying gas, so an unparseable one stops rather than falling back to a default.
+    console.error(`"--every ${EVERY}" is not an interval this understands. Try 3h, 90m or 45s.`);
+    process.exitCode = 1;
+  } else if (EVERY) await every(seconds(EVERY), seconds(JITTER));
+  else await main();
 } finally {
   db.close();
 }

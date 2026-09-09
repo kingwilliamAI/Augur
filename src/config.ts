@@ -86,6 +86,31 @@ export const CFG = {
     /** Sending needs an endpoint that accepts eth_sendRawTransaction; the logs one does. */
     rpcUrl: str("PAYOUT_RPC_URL", ""),
   },
+  /**
+   * Buying the token back with the share the payout set aside for it.
+   *
+   * The router and the pool are not guesses: both were read off a transaction that really bought
+   * this token, and the pool key is the one pons graduated it into. Six other pools exist for the
+   * same token, opened by strangers at fee tiers up to eighty percent, which is exactly why these
+   * are pinned here and not discovered at runtime.
+   */
+  buyback: {
+    /** UniversalRouter on Robinhood Chain, verified by decoding a real buy. */
+    router: str("BUYBACK_ROUTER", "0x8876789976decbfcbbbe364623c63652db8c0904").toLowerCase(),
+    /** Empty follows COIN_TOKEN, which is the point of a buyback. */
+    token: str("BUYBACK_TOKEN", "").toLowerCase(),
+    /** The pool charges nothing: pons takes its fee at the hook instead. */
+    poolFee: num("BUYBACK_POOL_FEE", 0),
+    tickSpacing: num("BUYBACK_TICK_SPACING", 200),
+    /** Empty uses the factory's own hook address from ADDR. */
+    hook: str("BUYBACK_HOOK", "").toLowerCase(),
+    /** How far below the simulated price the floor is allowed to sit. 100 = 1%. */
+    slippageBps: num("BUYBACK_SLIPPAGE_BPS", 100),
+    reserveEth: str("BUYBACK_RESERVE_ETH", "0.005"),
+    minimumEth: str("BUYBACK_MIN_ETH", "0.01"),
+    deadlineSec: num("BUYBACK_DEADLINE_SEC", 300),
+    rpcUrl: str("BUYBACK_RPC_URL", ""),
+  },
   dbPath: str("DB_PATH", "./data/augur.db"),
   boardPort: num("BOARD_PORT", 4663),
   /**

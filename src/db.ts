@@ -403,6 +403,25 @@ CREATE TABLE IF NOT EXISTS payouts (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS ix_payouts_ts ON payouts(ts DESC);
 
+-- Buybacks, one row per swap, written after the receipt.
+--
+-- What was spent, what came back, and the floor the swap was allowed to settle at. The floor is kept
+-- because it is the only way to read a bad fill afterwards: a buy that landed exactly on its floor
+-- was a buy that got sandwiched, and a ledger that stored only the outcome could not say so.
+CREATE TABLE IF NOT EXISTS buybacks (
+  tx           TEXT PRIMARY KEY,
+  wallet       TEXT NOT NULL,
+  token        TEXT NOT NULL,
+  spent_wei    TEXT NOT NULL,
+  spent_eth    REAL NOT NULL,
+  received     TEXT NOT NULL,
+  min_out      TEXT NOT NULL,
+  price_eth    REAL NOT NULL,
+  block        INTEGER,
+  ts           INTEGER NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_buybacks_ts ON buybacks(ts DESC);
+
 CREATE TABLE IF NOT EXISTS fee_recipient_changes (
   token     TEXT NOT NULL,
   tx        TEXT NOT NULL,

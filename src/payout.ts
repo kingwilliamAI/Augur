@@ -129,6 +129,18 @@ export const format = (v: bigint, decimals: number, places = 6): string => {
   return frac ? `${whole}.${frac}` : whole.toString();
 };
 
+/**
+ * A duration like "3h", "90m" or "45s" in seconds. A bare number is minutes, because that is what a
+ * missing unit most likely meant and an interval read as seconds would run the tool 180 times an
+ * hour.
+ */
+export function seconds(spec: string): number {
+  const m = /^(\d+(?:\.\d+)?)\s*([smhd]?)$/i.exec(spec.trim());
+  if (!m) return 0;
+  const n = Number(m[1]);
+  return Math.round(n * ({ s: 1, m: 60, h: 3600, d: 86400 }[m[2].toLowerCase()] ?? 60));
+}
+
 /** The smallest units in a decimal string, without going through a float. */
 export function parseUnits(value: string, decimals: number): bigint {
   const [whole, frac = ""] = value.trim().split(".");

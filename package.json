@@ -37,7 +37,8 @@
     "patterns": "node --no-warnings src/cli/patterns.ts",
     "early": "node --no-warnings src/cli/early.ts",
     "fees": "node --no-warnings src/cli/fees.ts",
-    "payout": "node --no-warnings src/cli/payout.ts"
+    "payout": "node --no-warnings src/cli/payout.ts",
+    "buyback": "node --no-warnings src/cli/buyback.ts"
   },
   "dependencies": {
     "viem": "^2.56.3"

@@ -719,7 +719,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <p><b>Live.</b> <code>/follow 0x…</code> in the bot takes the creator address off any card. When that wallet launches again the alert goes out as soon as the watcher sees the block, whatever the launch scores, with the wallet’s record beside it: how many launches, how many reached the pool, their best peak, and the base rate to read it against. A wallet is matched on both names a launch can carry, the sender and the deployer the event names, which is what makes an address copied off a card work here. Three wallets free, twenty-five holding , a hundred at tier 2; <code>/following</code> lists them and <code>/unfollow</code> stops one.</p>
 
         <h2><span class="n">03</span>Where the fee goes, live</h2>
-        <p><b>Live in software.</b> The <a href="#/fees">fees page</a> reads the wallet’s ledger off the chain: what the curve paid into the pons escrow, what the pool hook swept, what has been claimed. <code>npm run payout</code> then splits what arrived between three wallets, the nodes, the buyback and the team, in shares set in the configuration, and writes every transfer to that page with its transaction. It holds back a gas reserve, refuses to run below a floor, prints its plan and does nothing without <code>--send</code>. It is the one command in this project that signs anything, it belongs to whoever operates the board, and no clone, board or bot has a path to it.</p>
+        <p><b>Live in software.</b> The <a href="#/fees">fees page</a> reads the wallet’s ledger off the chain: what the curve paid into the pons escrow, what the pool hook swept, what has been claimed. <code>npm run payout</code> then splits what arrived between three wallets, the nodes, the buyback and the team, on whatever cadence it is given, and writes every transfer to that page with its transaction. <code>npm run buyback</code> spends the third of those in the pool the token graduated into: it asks the chain to simulate the swap before it signs, and settles only above that price less a stated slippage, so a fill that is front-run reverts instead of going through. Both hold back a gas reserve, refuse to run below a floor, print their plan and do nothing without <code>--send</code>. They are the only two commands in this project that sign anything, they belong to whoever operates the board, and no clone, board or bot has a path to them.</p>
         <p><b>Not yet a guarantee.</b> A command somebody runs is a habit, not a rule, and the page says so on every line it paid. <code>contracts/FeeSplitter.sol</code> is the version that removes the habit: a contract in the wallet’s place, dividing each payout as it is released, shares fixed at deployment, no owner, no setter, no pause, no sweep. It is written and not deployed; deploying it and pointing the launch’s fee recipient at it is one transaction, visible to anybody.</p>
 
         <h2><span class="n">04</span>Creator tools</h2>
@@ -1001,6 +1001,10 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <h2><span class="n">&middot;</span>Every payout</h2>
         <div class="ldg" id="fee-ledger"></div>
         <div class="ldg note" id="fee-note"></div>
+
+        <h2><span class="n">&middot;</span>Every buyback</h2>
+        <p>The buyback share does not stop at a wallet. <code>npm run buyback</code> spends it in the pool this token graduated into, asking the chain what the swap returns before it signs anything and refusing to settle below that price less a stated slippage. Every buy is here with what it spent, what came back and its transaction.</p>
+        <div class="ldg" id="fee-buys"></div>
       </div>
       <div class="side">
         <h3>What has come in</h3>
@@ -1009,6 +1013,10 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <div class="row2"><b>Not yet claimed</b><span id="fee-unclaimed">&mdash;</span></div>
         <h3 style="margin-top:22px">Where it went</h3>
         <div id="fee-went"></div>
+        <h3 style="margin-top:22px">Bought back</h3>
+        <div class="row2"><b>Spent</b><span id="fee-bought-eth">&mdash;</span></div>
+        <div class="row2"><b>Tokens</b><span id="fee-bought-tok">&mdash;</span></div>
+
         <h3 style="margin-top:22px">Addresses</h3>
         <div class="row2"><b>Paid to</b><span id="fee-recipient">&mdash;</span></div>
         <div class="row2"><b>Split by</b><span id="fee-splitter">&mdash;</span></div>
@@ -2227,7 +2235,20 @@ async function loadFees() {
   const paid = d.payouts.count || d.splits.count;
   $("fee-went").innerHTML = went.map((r) => '<div class="row2"><b>' + r[0] + "</b><span>"
     + (paid ? eth(r[1]) : "—") + "</span></div>").join("");
+  // A fill that landed exactly on its floor is what being front-run looks like, so it is marked
+  // rather than left to look like any other line.
+  $("fee-buys").innerHTML = d.buybacks.recent.length
+    ? d.buybacks.recent.map((b) => '<div class="r"><span class="w">' + when(b.ts)
+        + '</span><span class="d"><a href="' + esc(b.url) + '" target="_blank" rel="noopener">bought &#8599;</a> &middot; '
+        + b.tokens.toLocaleString(undefined, { maximumFractionDigits: 0 }) + " tokens"
+        + (b.onFloor ? " &middot; filled on the floor" : "")
+        + '</span><span class="a">' + eth(b.spentEth) + "</span></div>").join("")
+    : '<div class="r"><span class="w">—</span><span class="d">no buybacks yet</span><span class="a"></span></div>';
+
   $("fee-recipient").textContent = d.recipient ? short(d.recipient) : "—";
+  $("fee-bought-eth").textContent = d.buybacks.count ? eth(d.buybacks.spentEth) : "—";
+  $("fee-bought-tok").textContent = d.buybacks.count
+    ? d.buybacks.tokens.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—";
   $("fee-splitter").textContent = d.mode === "contract" && s ? short(s.address)
     : d.mode === "wallet" ? "npm run payout"
       : s ? short(s.address) + ", not in force" : "nothing yet";

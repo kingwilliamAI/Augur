@@ -284,7 +284,8 @@ Nothing here needs a key, because nothing here signs.
 | `nightly` | backfill, enrich, retrain, in that order |
 | `telegram` | optional bot, the only part of this project that talks to a third party |
 | `fees` | where the curve fee went: escrow credits, claims, and every split the contract made |
-| `payout` | splits the fee wallet three ways. The only command here that signs, and it dry-runs by default |
+| `payout` | splits the fee wallet three ways. Signs, and dry-runs by default |
+| `buyback` | spends the buyback wallet on the token, at a price the chain quoted first. Signs, and dry-runs by default |
 
 <br>
 
@@ -330,10 +331,26 @@ build it. There are two ways to carry that out, and this repository has both.
 
 `npm run payout` is the one that works today. It reads the fee wallet's balance, holds back a gas
 reserve, refuses anything below a floor, and sends the three shares on, writing each transfer to the
-ledger once it is mined. It is the only command in this project that signs anything, which is why it
-is a command of its own: the shares ship at zero so it does nothing until somebody sets them, a run
-prints its plan and stops unless `--send` is passed, and the key it uses comes from `.env` on the
-operator's own machine. A clone never runs it, and neither the board nor the bot can reach it.
+ledger once it is mined. The shares ship at zero so it does nothing until somebody sets them, a run
+prints its plan and stops unless `--send` is passed, and `--every 3h` keeps it on a cadence. The key
+it uses comes from `.env` on the operator's own machine; a clone never runs it, and neither the board
+nor the bot can reach it.
+
+`npm run buyback` spends the third share. It buys the token in the pool pons graduated it into,
+through the router real buys of this token go through, and both the router and the pool key were read
+off a transaction that worked rather than assembled from a guess: six other pools exist for this
+token, opened by strangers at fee tiers up to eighty percent. There is no price feed and no quoter
+contract. The command asks the chain to simulate the swap at a floor and raises the floor until the
+simulation refuses, which converges on what the pool would really pay, through the hook's fee and the
+ticks; the floor that finally goes on chain is that number less a stated slippage, so a sandwiched
+fill reverts instead of settling. A fill that lands exactly on its floor is marked as such in the
+ledger, because that is what being front-run looks like afterwards. It dry-runs by default too, and
+`--every 3h` fuzzes its own interval, since a buy of a predictable size at a predictable minute is
+the easiest thing on a chain to trade ahead of.
+
+The two together are the only commands here that sign anything, which is why they are commands of
+their own. Tokens bought stay in the buyback wallet: burning them, locking them or holding them is a
+separate decision this tool deliberately has no opinion about.
 
 `contracts/FeeSplitter.sol` is the version that needs nobody to run it: a contract that takes the
 wallet's place as the fee recipient and divides every payout as it is released, in shares fixed at
@@ -386,9 +403,10 @@ A wallet is proved by signing a sentence. It costs no gas, moves nothing, and ha
 it back; `/link 0x…` instead hands you the sentence to sign wherever you like and takes it back with
 `/verify 0x…`. `/unlink` forgets the wallet, the tier and the key together. Nothing a reader can run
 asks for a private key, a seed, an approval, or a transaction, and nothing on this site or in the bot
-has a path to one. The single exception is `npm run payout`, which is the operator's own command for
-splitting the fee wallet and is described below: it signs with a key only the operator has, in a
-process nobody else starts, and no part of the scanner, the board or the bot can reach it.
+has a path to one. The exceptions are the two operator commands described below, `npm run payout` and
+`npm run buyback`, which split the fee wallet and spend the buyback share: they sign with keys only
+the operator has, in processes nobody else starts, and no part of the scanner, the board or the bot
+can reach them.
 
 The connect button on the hosted site is the one place any of this touches a wallet, and it does two
 things: reads the address, and asks for that one signature. A reader who never wants to connect
