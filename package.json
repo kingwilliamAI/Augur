@@ -39,6 +39,7 @@
     "fees": "node --no-warnings src/cli/fees.ts",
     "payout": "node --no-warnings src/cli/payout.ts",
     "buyback": "node --no-warnings src/cli/buyback.ts",
+    "burn": "node --no-warnings src/cli/burn.ts",
     "tail": "node --no-warnings src/cli/tail.ts",
     "traders": "node --no-warnings src/cli/traders.ts"
   },

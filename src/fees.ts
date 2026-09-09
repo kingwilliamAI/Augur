@@ -272,6 +272,17 @@ export type FeeLedger = {
     recent: Array<{ tx: string; url: string; ts: number; spentEth: number; tokens: number; onFloor: boolean }>;
   };
   /**
+   * Tokens destroyed, and what the supply was afterwards.
+   *
+   * Buying and burning are two decisions, and only the second cannot be undone, so they are two
+   * rows rather than one. The supply is stored as the contract reported it after the fact, which is
+   * what makes the page checkable rather than merely confident.
+   */
+  burns: {
+    count: number; tokens: number; lastTs: number | null; supplyAfter: string | null;
+    recent: Array<{ tx: string; url: string; ts: number; tokens: number }>;
+  };
+  /**
    * What the wallet itself paid out, when the split is run in software rather than by a contract.
    *
    * Kept apart from `splits` rather than merged into it, because the difference is the whole point:
@@ -370,6 +381,14 @@ export function feeLedger(db: DB, limit = 25): FeeLedger {
            coalesce(sum(CAST(received AS REAL)),0) tokens FROM buybacks`)
     .get() as { c: number; last: number | null; spent: number; tokens: number };
 
+  const burned = db.prepare("SELECT tx, ts, amount FROM burns ORDER BY ts DESC LIMIT ?").all(limit) as
+    Array<{ tx: string; ts: number; amount: string }>;
+  const burnTotals = db.prepare(`
+    SELECT count(*) c, max(ts) last, coalesce(sum(CAST(amount AS REAL)),0) tokens FROM burns`)
+    .get() as { c: number; last: number | null; tokens: number };
+  const lastBurn = db.prepare("SELECT supply_after FROM burns ORDER BY ts DESC LIMIT 1")
+    .get() as { supply_after: string } | undefined;
+
   const seen = events.map((e) => e.ts).filter((t) => t > 0);
 
   // The pool half of the same fee, already indexed for the coin page.
@@ -419,6 +438,15 @@ export function feeLedger(db: DB, limit = 25): FeeLedger {
         spentEth: Number(BigInt(b.spent_wei)) / 1e18,
         tokens: Number(BigInt(b.received)) / 1e18,
         onFloor: BigInt(b.received) > 0n && BigInt(b.received) <= BigInt(b.min_out),
+      })),
+    },
+    burns: {
+      count: burnTotals.c,
+      tokens: burnTotals.tokens / 1e18,
+      lastTs: burnTotals.last,
+      supplyAfter: lastBurn ? (Number(BigInt(lastBurn.supply_after)) / 1e18).toString() : null,
+      recent: burned.map((b) => ({
+        tx: b.tx, url: EXPLORER.tx(b.tx), ts: b.ts, tokens: Number(BigInt(b.amount)) / 1e18,
       })),
     },
     income: {

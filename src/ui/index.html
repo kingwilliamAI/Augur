@@ -1102,6 +1102,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
 
         <h2><span class="n">&middot;</span>Every buyback</h2>
         <p>The buyback share does not stop at a wallet. <code>npm run buyback</code> spends it in the pool this token graduated into, asking the chain what the swap returns before it signs anything and refusing to settle below that price less a stated slippage. Every buy is here with what it spent, what came back and its transaction.</p>
+        <p><code>npm run burn</code> is the step after, and it is a different act. Sending tokens to a dead address parks them at a key nobody holds and leaves the supply untouched, and this token refuses transfers to the zero address outright; <code>burn</code> takes them out of <code>totalSupply</code>, which the contract will confirm to anybody who asks it. Burns appear below with the amount they destroyed.</p>
         <div class="ldg" id="fee-buys"></div>
       </div>
       <div class="side">
@@ -1114,6 +1115,8 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <h3 style="margin-top:22px">Bought back</h3>
         <div class="row2"><b>Spent</b><span id="fee-bought-eth">&mdash;</span></div>
         <div class="row2"><b>Tokens</b><span id="fee-bought-tok">&mdash;</span></div>
+        <div class="row2"><b>Burned</b><span id="fee-burned">&mdash;</span></div>
+        <div class="row2"><b>Supply after</b><span id="fee-supply">&mdash;</span></div>
 
         <h3 style="margin-top:22px">Addresses</h3>
         <div class="row2"><b>Paid to</b><span id="fee-recipient">&mdash;</span></div>
@@ -2359,6 +2362,18 @@ async function loadFees() {
     : '<div class="r"><span class="w">—</span><span class="d">no buybacks yet</span><span class="a"></span></div>';
 
   $("fee-recipient").textContent = d.recipient ? short(d.recipient) : "—";
+  // Burns share the buyback's ledger, because they are the same wallet's story: what the share
+  // bought, and what was then destroyed. A burn carries no price, so its amount column is the tokens.
+  const burnRows = d.burns.recent.map((b) => '<div class="r"><span class="w">' + when(b.ts)
+    + '</span><span class="d"><a href="' + esc(b.url) + '" target="_blank" rel="noopener">burned &#8599;</a> &middot; '
+    + b.tokens.toLocaleString(undefined, { maximumFractionDigits: 0 }) + " tokens out of the supply"
+    + '</span><span class="a">&mdash;</span></div>').join("");
+  if (burnRows) $("fee-buys").innerHTML = burnRows + $("fee-buys").innerHTML;
+
+  $("fee-burned").textContent = d.burns.count
+    ? d.burns.tokens.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—";
+  $("fee-supply").textContent = d.burns.supplyAfter
+    ? Number(d.burns.supplyAfter).toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—";
   $("fee-bought-eth").textContent = d.buybacks.count ? eth(d.buybacks.spentEth) : "—";
   $("fee-bought-tok").textContent = d.buybacks.count
     ? d.buybacks.tokens.toLocaleString(undefined, { maximumFractionDigits: 0 }) : "—";

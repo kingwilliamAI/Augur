@@ -124,6 +124,34 @@ export async function findOutput(
 export const floorFor = (expected: bigint, slippageBps: number): bigint =>
   (expected * BigInt(10_000 - slippageBps)) / 10_000n;
 
+export type BurnPlan =
+  | { ok: false; reason: string; amount: bigint }
+  | { ok: true; amount: bigint; balance: bigint; shareOfSupply: number };
+
+/**
+ * How much of what the buyback wallet holds to destroy.
+ *
+ * Burning is not sending to a dead address. This token blocks transfers to the zero address, and a
+ * transfer to 0x...dEaD leaves the supply exactly where it was with the tokens merely parked at an
+ * address nobody holds the key to. `burn` removes them from `totalSupply`, which is the difference
+ * between a claim about scarcity and an arithmetic fact anybody can read off the contract.
+ *
+ * Irreversible in a way nothing else in this project is, so the refusals are strict: no amount
+ * larger than the balance, nothing at all below a floor, and the whole balance only when that is
+ * what was asked for.
+ */
+export function planBurn(input: { balance: bigint; supply: bigint; minimum: bigint; amount?: bigint }): BurnPlan {
+  const { balance, supply, minimum } = input;
+  const no = (reason: string, amount = 0n): BurnPlan => ({ ok: false, reason, amount });
+
+  if (balance <= 0n) return no("the wallet holds none of this token");
+  const amount = input.amount !== undefined && input.amount > 0n ? input.amount : balance;
+  if (amount > balance) return no(`asked to burn more than the wallet holds`, amount);
+  if (amount < minimum) return no("below the floor for a burn, so the gas would cost more than it destroys", amount);
+
+  return { ok: true, amount, balance, shareOfSupply: supply > 0n ? Number(amount) / Number(supply) : 0 };
+}
+
 export type BuyPlan =
   | { ok: false; reason: string; spend: bigint }
   | { ok: true; spend: bigint; expected: bigint; minOut: bigint; pricePerToken: number };

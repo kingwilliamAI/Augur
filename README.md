@@ -286,6 +286,7 @@ Nothing here needs a key, because nothing here signs.
 | `fees` | where the curve fee went: escrow credits, claims, and every split the contract made |
 | `payout` | splits the fee wallet three ways. Signs, and dry-runs by default |
 | `buyback` | spends the buyback wallet on the token, at a price the chain quoted first. Signs, and dry-runs by default |
+| `burn` | destroys tokens the buyback wallet holds, out of `totalSupply`. Signs, and dry-runs by default |
 | `tail` | full block bodies, for native transfers that emit no logs. Forward-only |
 | `traders` | every curve trade on the chain, folded into who has a record |
 
@@ -320,9 +321,17 @@ ledger, because that is what being front-run looks like afterwards. It dry-runs 
 `--every 3h` fuzzes its own interval, since a buy of a predictable size at a predictable minute is
 the easiest thing on a chain to trade ahead of.
 
-The two together are the only commands here that sign anything, which is why they are commands of
-their own. Tokens bought stay in the buyback wallet: burning them, locking them or holding them is a
-separate decision this tool deliberately has no opinion about.
+`npm run burn` destroys what the buyback wallet holds, and it is a different act from the two above.
+Sending tokens to a dead address parks them at a key nobody has and leaves `totalSupply` exactly
+where it was; this token refuses transfers to the zero address outright, which is the wall most
+people hit first. `burn` removes them from the supply, and the supply is a number the contract will
+confirm to anybody who asks it afterwards. It is the most irreversible thing here, so it simulates
+before it signs, prints the supply the burn would leave behind, and does nothing without `--send`.
+Buying and burning stay separate commands, because buying back and destroying are two decisions and
+only the second cannot be undone.
+
+Those three are the only commands here that sign anything, which is why they are commands of their
+own.
 
 `contracts/FeeSplitter.sol` is the version that needs nobody to run it: a contract that takes the
 wallet's place as the fee recipient and divides every payout as it is released, in shares fixed at

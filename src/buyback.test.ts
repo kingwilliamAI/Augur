@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decodeAbiParameters, parseAbiParameters } from "viem";
 
-import { buyCalldata, findOutput, floorFor, planBuy, poolKeyFor, sizeBuy } from "./buyback.ts";
+import { buyCalldata, findOutput, floorFor, planBuy, planBurn, poolKeyFor, sizeBuy } from "./buyback.ts";
 import { parseUnits } from "./payout.ts";
 
 /**
@@ -136,4 +136,40 @@ test("the size is settled before the pool is asked, so no price is needed to ask
   assert.equal(sizeBuy({ balance: ETH("0.005"), reserve: ETH("0.005"), minimum: ETH("0.01") }).ok, false);
   const plan = planBuy({ balance: ETH("0.025"), reserve: ETH("0.005"), minimum: ETH("0.01"), max: ETH("0.02"), expected: 1n, slippageBps: 100, decimals: 18 });
   assert.equal(plan.ok, false, "a real answer of one unit still cannot carry a floor");
+});
+
+/* ── burning ───────────────────────────────────────────────────────────────── */
+
+const SUPPLY = 1_000_000_000n * 10n ** 18n;
+const burn = (over: Partial<Parameters<typeof planBurn>[0]> = {}) => planBurn({
+  balance: 50_000_000n * 10n ** 18n, supply: SUPPLY, minimum: 10n ** 18n, ...over,
+});
+
+test("burning takes the whole balance unless a part is named", () => {
+  const p = burn();
+  assert.equal(p.ok, true);
+  assert.equal(p.amount, 50_000_000n * 10n ** 18n);
+  assert.ok(Math.abs(p.shareOfSupply - 0.05) < 1e-9, "five percent of the supply");
+});
+
+test("a named amount is taken instead, and one larger than the balance is refused", () => {
+  const part = burn({ amount: 1_000_000n * 10n ** 18n });
+  assert.equal(part.ok, true);
+  assert.equal(part.amount, 1_000_000n * 10n ** 18n);
+
+  const tooMuch = burn({ amount: 60_000_000n * 10n ** 18n });
+  assert.equal(tooMuch.ok, false);
+  assert.match(tooMuch.reason, /more than the wallet holds/);
+});
+
+test("an empty wallet burns nothing rather than sending an empty transaction", () => {
+  const p = burn({ balance: 0n });
+  assert.equal(p.ok, false);
+  assert.match(p.reason, /holds none/);
+});
+
+test("dust is not worth the gas it would cost to destroy", () => {
+  const p = burn({ balance: 10n ** 12n });
+  assert.equal(p.ok, false);
+  assert.match(p.reason, /below the floor/);
 });

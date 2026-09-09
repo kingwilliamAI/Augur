@@ -492,6 +492,23 @@ CREATE TABLE IF NOT EXISTS buybacks (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS ix_buybacks_ts ON buybacks(ts DESC);
 
+-- Tokens destroyed, one row per burn.
+--
+-- Separate from buybacks because buying and burning are two decisions and only the second is
+-- irreversible. What is stored is the amount and the supply it left behind, so the page can show
+-- the arithmetic rather than assert it: the supply after a burn is a number the contract will
+-- confirm to anybody who asks it.
+CREATE TABLE IF NOT EXISTS burns (
+  tx           TEXT PRIMARY KEY,
+  wallet       TEXT NOT NULL,
+  token        TEXT NOT NULL,
+  amount       TEXT NOT NULL,
+  supply_after TEXT NOT NULL,
+  block        INTEGER,
+  ts           INTEGER NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_burns_ts ON burns(ts DESC);
+
 CREATE TABLE IF NOT EXISTS fee_recipient_changes (
   token     TEXT NOT NULL,
   tx        TEXT NOT NULL,
