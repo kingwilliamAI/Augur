@@ -381,10 +381,12 @@ const json = (res: import("node:http").ServerResponse, body: unknown, code = 200
  * could serve it, and a scan of 177,000 rows on every keystroke is not worth the launches it would
  * add.
  *
- * The other limit is honest rather than technical. A third of launches go through a router whose
- * calldata does not decode, so their ticker is unknown until `npm run names` has asked the contract
- * for it, and until then no search can find them by name. Every answer carries how many launches
- * are indexed and how many have a ticker, so an empty result can say which of the two it is.
+ * The other limit is honest rather than technical. A launch that goes through a router whose
+ * calldata does not decode has no ticker until `npm run names` has asked the contract for it, and
+ * until then no search can find it by name. How many that is moves as that backfill runs, from
+ * around a third of launches down to a twentieth over a week, so the number is reported rather than
+ * written down: every answer carries how many launches are indexed and how many have a ticker, and
+ * an empty result can say which of the two kinds of empty it is.
  */
 const SEARCH_MAX = 20;
 const ADDRESS = /^0x[0-9a-f]{40}$/;

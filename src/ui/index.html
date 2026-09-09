@@ -1490,9 +1490,10 @@ function outstanding(d) {
  *
  * Two details keep it honest rather than merely quick. Answers are matched to the keystroke that
  * asked for them, because a slow reply to "au" must not overwrite the answer to "augur" that
- * arrived first. And an empty result says which kind of empty it is: a third of launches go through
- * a router that hides the ticker until the name backfill has asked the contract, so "nothing found"
- * and "not named yet" are different sentences, and the second one is not the token's fault.
+ * arrived first. And an empty result says which kind of empty it is, using the counts the answer
+ * carries: a launch through a router has no ticker until the name backfill has asked the contract,
+ * so "nothing found" and "not named yet" are different sentences, and the second is not the token's
+ * fault.
  */
 const Q = { timer: null, seq: 0, data: null, sel: 0, last: null };
 const sAge = (ts) => { const h = (Date.now() / 1000 - ts) / 3600; return h < 48 ? ago(ts) : Math.round(h / 24) + "d"; };
