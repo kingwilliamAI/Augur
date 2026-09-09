@@ -489,14 +489,17 @@ export function poolCaps(db: DB, token: string, quoteSymbol: string | null): Poo
     | undefined;
 
   const cap = (sqrt: string): number | null => marketCapUsd(quotePerToken(sqrt, p), quoteSymbol);
-  if (!k) return { poolId: p.pool_id, openUsd: cap(p.init_sqrt), peakUsd: null, lastUsd: null, peakBlock: null, swaps: 0 };
 
+  // A pool the chain-wide pass has not reached yet has no `pool_peaks` row at all. Returning nothing
+  // here was wrong: it skipped the bars below, which are the fresher of the two stores, so a coin
+  // with a live chart still showed a dash for its price. Fall through with whatever exists.
+  //
   // The token's price peaks where its own side of the pair is dearest, which is the low end of the
   // ratio when it is currency1 and the high end when it is currency0.
-  const peakSqrt = p.token_is_c1 ? k.min_sqrt : k.max_sqrt;
-  const peakBlock = p.token_is_c1 ? k.min_block : k.max_block;
+  const peakSqrt = k ? (p.token_is_c1 ? k.min_sqrt : k.max_sqrt) : null;
+  const peakBlock = k ? (p.token_is_c1 ? k.min_block : k.max_block) : null;
   const open = cap(p.init_sqrt);
-  const peak = cap(peakSqrt);
+  const peak = peakSqrt ? cap(peakSqrt) : null;
 
   // `pool_peaks` is written by the chain-wide pass, which is millions of blocks behind head. Where a
   // coin has its own bars they are current, and a day-old price on the page that quotes a price is
@@ -512,6 +515,10 @@ export function poolCaps(db: DB, token: string, quoteSymbol: string | null): Poo
   ).get(p.pool_id) as { s: string | null } | undefined;
   const barPeakUsd = barPeak?.s ? cap(barPeak.s) : null;
 
+  const barSwaps = (db.prepare(
+    "SELECT COALESCE(sum(swaps), 0) n FROM coin_bars WHERE pool_id = ?",
+  ).get(p.pool_id) as { n: number }).n;
+
   const best = [peak, open, barPeakUsd].filter((v): v is number => v !== null);
 
   return {
@@ -520,9 +527,9 @@ export function poolCaps(db: DB, token: string, quoteSymbol: string | null): Poo
     // The pool opens at the price the curve ended on, so that opening is itself a candidate peak for
     // a token nobody bought afterwards.
     peakUsd: best.length ? Math.max(...best) : null,
-    lastUsd: fresh ?? cap(k.last_sqrt),
+    lastUsd: fresh ?? (k ? cap(k.last_sqrt) : null),
     peakBlock,
-    swaps: k.swaps,
+    swaps: k?.swaps ?? barSwaps,
   };
 }
 
