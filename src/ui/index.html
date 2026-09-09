@@ -668,25 +668,31 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
     </div>
     <div class="rmwrap">
       <h1>What gets built next</h1>
-      <div class="sub">The local board is live. The hosted one is not built yet, and neither is anything that needs the token.</div>
+      <div class="sub">The board, the bot and the coin are live. What comes next is what holding $AUGUR does.</div>
       <div class="tl" id="rm-tl"></div>
     </div>
 
     <div class="cols2">
       <div class="prose">
-        <p>augur reads pons v2 launches on Robinhood Chain, scores them and ranks them. Today that happens on your own machine: you clone a repository and run a runtime, which rules out almost everybody. A hosted board is the next thing that matters, and it is not built.</p>
-        <p>Here is what gets built next, in order, with no dates. Anything marked <b>planned</b> above does not exist. If a page on this site ever describes something as working when it is not, that is a bug worth reporting.</p>
+        <p>augur reads pons v2 launches on Robinhood Chain, scores them and ranks them. The board runs here and on your own machine if you clone it, the alert bot is <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a>, and $AUGUR is on chain and past the curve. None of what follows is a promise of profit: the backtest is in the repository and it says that following the score does not pay. What the coin buys is the hosted half, and that is what gets built now.</p>
+        <p>Here is what gets built next, in order, with no dates. Anything marked <b>then</b> above does not exist. If a page on this site ever describes something as working when it is not, that is a bug worth reporting.</p>
 
-        <h2><span class="n">01</span>Make the score worth trusting</h2>
-        <p>The graduation model is validated on time-ordered folds and reports what it actually did, including the folds where it did no better than chance. The peak model ranks well and sizes badly, so it is shown as an 80% band rather than as a number. Both improve with more settled history, which is what the backfills are for.</p>
+        <h2><span class="n">01</span>Find any token</h2>
+        <p>The feed shows the last six hours and nothing older. A search box takes an address and opens the card, or a ticker and lists every launch that has used it, who launched each one and whether it reached the pool. A deployer's address gets the same treatment: all of their launches on one list.</p>
 
-        <h2><span class="n">02</span>Cover the history</h2>
-        <p>Curves are read on demand, pools are swept wholesale, and enrichment has only covered the recent window. Every one of those gaps shows up as a dash somewhere on a card. The work is unglamorous and mostly spent waiting on rate limits.</p>
+        <h2><span class="n">02</span>Holder tiers</h2>
+        <p>Holding $AUGUR opens up the hosted half. Free stays what it is today: alerts arrive a minute after the score is written, API reads are limited per address. A holder links a wallet by signing a plain sentence in the bot, which costs no gas and hands over no key, and gets the alert the second the score is written, at any threshold, plus an API key and history exports. Sell below the line and the tier drops; it comes back a week after the balance does. The thresholds are set when this ships and will be printed here.</p>
 
-        <h2><span class="n">03</span>Make it reachable</h2>
-        <p>A hosted board, then alerts. The local version stays free and stays the reference: the score you compute yourself is the score the site shows, which is the point of it being open.</p>
+        <h2><span class="n">03</span>Follow a deployer</h2>
+        <p><code>/follow</code> an address in the bot. When that creator launches again you hear about it in the first second, with their record beside it: how many launches, how many reached the pool, the best peak. The card already computes that record; this is the subscription to it.</p>
 
-        <h2><span class="n red">04</span>Never</h2>
+        <h2><span class="n">04</span>Where the fee goes, live</h2>
+        <p>Today the 1.5% creator fee lands in a wallet. The plan is a contract at that address that splits every fee as it arrives: a share to running the board, a share to holders in the quote asset on a schedule, a share to buying $AUGUR back. The $AUGUR page will show the split as it happens, every line linked to its transaction. The recipient can be changed on chain after the fact, so this ships when the contract is written and read, not before.</p>
+
+        <h2><span class="n">05</span>Creator tools</h2>
+        <p>Twelve thousand wallets launched something on pons in a single day this month. Before deploying, paste the parameters and get the score and its three reasons. After, an alert saying where the launch ranked against everything else that hour.</p>
+
+        <h2><span class="n red">06</span>Never</h2>
         <div class="never">
           <div><i>x</i><span>Never asks for a private key, a seed phrase or an approval.</span></div>
           <div><i>x</i><span>Never holds funds, never trades, never touches a wallet.</span></div>
@@ -695,8 +701,8 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
           <div><i>x</i><span>Never quietly drops a validation result for being unflattering.</span></div>
         </div>
 
-        <h2><span class="n">05</span>How to check</h2>
-        <p>Commits show what shipped and when. The model page shows what the model scored on data it had not seen, and the scoreboard grades claims that were recorded before their outcomes existed. If something here goes quiet for weeks, ask about it in public.</p>
+        <h2><span class="n">07</span>How to check</h2>
+        <p>Commits show what shipped and when. The model page shows what the model scored on data it had not seen, and the scoreboard grades claims that were recorded before their outcomes existed. The $AUGUR page reads the coin's fee route from the chain, the same way it does for every other launch. If something here goes quiet for weeks, ask about it in public.</p>
       </div>
 
       <div style="display:flex;flex-direction:column;gap:16px">
@@ -1163,9 +1169,11 @@ function passes(it) {
 const ROAD = [
   { tag: "shipped", cls: "done", title: "The terminal", d: "reads, scores, ranks, and waits the opening tax out" },
   { tag: "shipped", cls: "done", title: "The card", d: "creator, self-buy, exempt wallets, fee route, their history" },
-  { tag: "shipped", cls: "done", title: "Past the curve", d: "a graduated launch is followed into the pool" },
-  { tag: "building", cls: "now", title: "The whole history", d: "pool peaks and tickers, read back over every launch" },
-  { tag: "then", cls: "next", title: "Hosted, then alerts", d: "same score, our node, nothing to install" },
+  { tag: "shipped", cls: "done", title: "Hosted, with alerts", d: "this site and @AugurRHbot: same score, our node" },
+  { tag: "building", cls: "now", title: "Find any token", d: "an address or a ticker, and the card behind it" },
+  { tag: "then", cls: "next", title: "Holder tiers", d: "the bot and the API, opened by the balance" },
+  { tag: "then", cls: "next", title: "Follow a deployer", d: "their next launch, in the first second" },
+  { tag: "then", cls: "next", title: "Fee route, live", d: "a contract that splits the fee, a ledger that shows it" },
 ];
 
 const SHIPPED = [
@@ -1174,8 +1182,11 @@ const SHIPPED = [
   { t: "Scoreboard + verify", w: "Sep", ok: true },
   { t: "Peak model, as a band", w: "Sep", ok: true },
   { t: "Pool tracking after graduation", w: "Sep", ok: true },
-  { t: "Hosted board", w: "not yet", ok: false },
-  { t: "$AUGUR", w: "not yet", ok: false },
+  { t: "Hosted board · getaugur.xyz", w: "Sep", ok: true },
+  { t: "Alert bot · @AugurRHbot", w: "Sep", ok: true },
+  { t: "$AUGUR · on chain, past the curve", w: "Sep", ok: true },
+  { t: "Search", w: "building", ok: false },
+  { t: "Holder tiers", w: "not yet", ok: false },
 ];
 
 function drawRoadmap() {
