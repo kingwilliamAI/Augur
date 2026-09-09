@@ -5,6 +5,7 @@ import { BlockClock } from "../blockclock.ts";
 import { CFG } from "../config.ts";
 import { getMeta, openDb, setMeta } from "../db.ts";
 import { applyTrade, leaderboard } from "../traders.ts";
+import { BLOCKS_PER_SECOND } from "../curve.ts";
 import { quoteFromCache } from "../quote.ts";
 
 /**
@@ -57,8 +58,17 @@ const clock = new BlockClock();
 
 const head = Number(await withRetry(() => logsClient.getBlockNumber()));
 const stored = Number(getMeta(db, CURSOR_KEY) ?? 0);
+/**
+ * Where to start, in order of how explicitly it was asked for.
+ *
+ * The stored cursor is the right default and the wrong answer to a direct question. Asking for
+ * twenty-four hours and being given "carry on from where you stopped" is not a resume, it is the
+ * flag being ignored — which is exactly what happened the first time this was run in anger, and it
+ * looked like a sweep that finished in eight seconds.
+ */
 const from = arg("from", 0)
-  || (stored ? stored + 1 : HOURS ? head - Math.round(HOURS * 3600 * 9.91) : head - 20_000);
+  || (HOURS ? head - Math.round(HOURS * 3600 * BLOCKS_PER_SECOND) : 0)
+  || (stored ? stored + 1 : head - 20_000);
 
 console.log("augur traders — curve trades, folded into records");
 console.log(`  ${from.toLocaleString()} .. ${head.toLocaleString()}  (${(head - from).toLocaleString()} blocks)`);
