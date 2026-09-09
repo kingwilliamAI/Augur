@@ -14,7 +14,7 @@ local · open · no wallet · no key · nothing leaves your machine
 
 <br>
 
-![tests](https://img.shields.io/badge/tests-79%20passing-9ae600?style=flat-square)
+![tests](https://img.shields.io/badge/tests-95%20passing-9ae600?style=flat-square)
 ![models](https://img.shields.io/badge/models-2%20GBDT-9ae600?style=flat-square)
 ![node](https://img.shields.io/badge/node-%E2%89%A522.6-9ae600?style=flat-square)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-1-9ae600?style=flat-square)
@@ -75,6 +75,7 @@ is a file you can export and recompute without trusting a line of this code.
 | "is the tool any good, or is it telling me a story?" | every score is written down **before** the outcome exists, then graded against the chain | `scoreboard` · `verify` |
 | "does following it make money, or just rank well?" | replays the ranking against the price paths that actually happened | `backtest` |
 | "is there a shape that runs?" | searches the opening seconds, then attacks what it finds three ways | `patterns` |
+| the feed only reaches back six hours | search takes a ticker, a token address or a wallet, and opens the card behind any of them | `board` |
 | `deployer` is not the creator | reads `tx.from`; Multicall3 is the single largest "deployer" in a day | `board` |
 | half of launches aren't quoted in ETH | resolves each quote asset's decimals so amounts aren't printed as `0.0000` | everywhere |
 

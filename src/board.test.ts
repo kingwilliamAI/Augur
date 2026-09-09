@@ -39,20 +39,34 @@ let board: ChildProcess;
 function seed(path: string): void {
   const db = openDb(path);
   const now = Math.floor(Date.now() / 1000);
-  db.prepare(`INSERT INTO launches (token, curve, deployer, pair_token, launch_config_id,
+  const add = db.prepare(`INSERT INTO launches (token, curve, deployer, pair_token, launch_config_id,
     graduation_threshold_wei, graduation_threshold_eth, block, tx, log_index, ts, first_seen_at,
     enriched_at, launch_sender, creator_tax_bps, buyback_enabled, initial_buy_wei, initial_buy_eth,
-    exempt_count, name, symbol, description, socials_json)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    exempt_count, name, symbol, symbol_key, description, socials_json)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  add.run(
     TOKEN, "0xc0ffee", "0xdead", "0x0000000000000000000000000000000000000000", 1,
     "1000000000000000000", 1.0, 1000, "0xtx", 0, now - 600, now,
     now, "0xdead", 100, 0, "10000000000000000", 0.01,
-    1, "Smoke", "SMOKE", "a launch for the board to rank", "{}",
+    1, "Smoke", "SMOKE", "smoke", "a launch for the board to rank", "{}",
+  );
+  // A second launch, three days old and under the same ticker, from a wallet-shaped address.
+  //
+  // It is deliberately outside the feed's window, because that is the case search exists for: the
+  // list only ever reaches back six hours, so a launch this old is unreachable without it. Keeping
+  // it out of the window is also what lets the feed tests go on asserting exactly one ranked row.
+  add.run(
+    OLD_TOKEN, "0xc0ffee02", CREATOR, "0x0000000000000000000000000000000000000000", 1,
+    "1000000000000000000", 1.0, 900, "0xtx2", 0, now - 3 * 86400, now - 3 * 86400,
+    now - 3 * 86400, CREATOR, 100, 0, "10000000000000000", 0.01,
+    0, "Smoke, the elder", "SMOKE", "smoke", "a launch older than the window", "{}",
   );
   db.close();
 }
 
 const TOKEN = "0x00000000000000000000000000000000000000ff";
+const OLD_TOKEN = "0x00000000000000000000000000000000000000ee";
+const CREATOR = "0x1111111111111111111111111111111111111111";
 
 before(async () => {
   seed(join(dir, "test.db"));
@@ -278,6 +292,69 @@ test("serves a card for a launch it knows", async () => {
 test("says not-found for a token it has never seen, rather than falling over", async () => {
   const r = await fetch(`${BASE}/api/token/0x0000000000000000000000000000000000000001`);
   assert.equal(r.status, 404);
+});
+
+/**
+ * Search, which is how anything older than the six-hour window is reachable at all.
+ *
+ * Every failure this covers is a silent one. A ticker match is a prefix expressed as a range over a
+ * normalised key, so an off-by-one in the upper bound, or a change to the normalisation, returns an
+ * empty list rather than an error: the box would simply stop finding things and go on answering 200.
+ */
+test("finds launches by ticker, including ones older than the feed window", async () => {
+  const r = await fetch(`${BASE}/api/search?q=smoke`);
+  const body = await r.text();
+  assert.equal(r.status, 200, body);
+  const d = JSON.parse(body) as { kind: string; total: number; items: Array<{ token: string }> };
+  assert.equal(d.kind, "ticker");
+  assert.equal(d.total, 2, "both launches under this ticker should match");
+  const tokens = d.items.map((i) => i.token);
+  assert.ok(tokens.includes(OLD_TOKEN), "the three-day-old launch is exactly what search is for");
+});
+
+test("reads a ticker the way it is typed, not the way it is stored", async () => {
+  // The stored key is normalised: lower case, no spacing, no punctuation. If that ever stops being
+  // applied to the query too, every search with a capital letter in it quietly returns nothing.
+  for (const q of ["SMOKE", "Smoke", "smo"]) {
+    const d = await (await fetch(`${BASE}/api/search?q=${q}`)).json() as { kind: string; total: number };
+    assert.equal(d.kind, "ticker", `"${q}" was not read as a ticker`);
+    assert.equal(d.total, 2, `"${q}" found ${d.total} launches instead of 2`);
+  }
+});
+
+test("takes a token address straight to its own launch", async () => {
+  const d = await (await fetch(`${BASE}/api/search?q=${OLD_TOKEN}`)).json() as
+    { kind: string; items: Array<{ token: string; symbol: string }> };
+  assert.equal(d.kind, "token");
+  assert.equal(d.items.length, 1);
+  assert.equal(d.items[0].token, OLD_TOKEN);
+});
+
+test("takes a wallet address to everything it launched", async () => {
+  const d = await (await fetch(`${BASE}/api/search?q=${CREATOR}`)).json() as
+    { kind: string; total: number; creator: string; items: Array<{ token: string }> };
+  assert.equal(d.kind, "creator");
+  assert.equal(d.total, 1);
+  assert.equal(d.items[0].token, OLD_TOKEN);
+});
+
+test("says how much it has indexed when it finds nothing", async () => {
+  // An empty answer has two meanings -- no such launch, or a launch whose ticker has not been read
+  // yet -- and the page can only tell them apart if the numbers come back with the empty list.
+  const d = await (await fetch(`${BASE}/api/search?q=nosuchticker`)).json() as
+    { kind: string; items: unknown[]; coverage: { launches: number; named: number; since: number } };
+  assert.equal(d.kind, "none");
+  assert.equal(d.items.length, 0);
+  assert.equal(d.coverage.launches, 2, "coverage should count every launch, matched or not");
+  assert.ok(d.coverage.named >= 2, "both seeded launches have a ticker");
+  assert.ok(d.coverage.since > 0, "coverage should say how far back the database goes");
+});
+
+test("answers an empty query without falling over", async () => {
+  const r = await fetch(`${BASE}/api/search?q=`);
+  assert.equal(r.status, 200);
+  const d = await r.json() as { items: unknown[] };
+  assert.equal(d.items.length, 0);
 });
 
 test("is still standing after all of that", () => {

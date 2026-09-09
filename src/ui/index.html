@@ -226,6 +226,24 @@ h1{font:700 56px/1.02 Geist,sans-serif;letter-spacing:-.035em;margin:18px 0 0;te
 .stale{display:none;padding:8px 24px;font:500 12px var(--mono);border-bottom:1px solid var(--l08)}
 .stale.warn{display:block;color:var(--amber);background:rgba(232,184,58,.08)}
 .stale.bad{display:block;color:var(--red);background:rgba(255,107,87,.1)}
+.srch{position:relative;flex:none;border-bottom:1px solid var(--l08)}
+.srch input{width:100%;height:42px;padding:0 70px 0 24px;background:transparent;border:0;color:var(--ink);font:12.5px var(--mono);outline:none}
+.srch input::placeholder{color:var(--t35)}
+.srch input:focus{background:var(--l04)}
+.srch input::-webkit-search-cancel-button{display:none}
+.srch .kb{position:absolute;right:22px;top:11px;font:10px var(--mono);color:var(--t35);border:1px solid var(--l12);border-radius:4px;padding:2px 6px;pointer-events:none}
+.srch input:focus~.kb{opacity:0}
+.srch .res{position:absolute;left:0;right:0;top:100%;z-index:6;background:var(--bg2);border-bottom:1px solid var(--l15);max-height:min(58vh,440px);overflow:auto;box-shadow:0 22px 44px rgba(0,0,0,.55)}
+.srch .rh{position:sticky;top:0;background:var(--bg2);padding:9px 24px;font:11px var(--mono);color:var(--t45);border-bottom:1px solid var(--l06)}
+.srch .rr{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:baseline;padding:9px 24px;border-bottom:1px solid var(--l06);cursor:pointer}
+.srch .rr:hover,.srch .rr.on{background:rgba(204,255,0,.08)}
+.srch .rr b{font-size:13px}
+.srch .rr b.un{font:12px var(--mono);color:var(--t5);font-weight:400}
+.srch .rr .n{margin-left:9px;font-size:12px;color:var(--t5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srch .rr .g{font:10px var(--mono);color:var(--lime);border:1px solid rgba(204,255,0,.4);border-radius:3px;padding:1px 5px}
+.srch .rr .w{font:11px var(--mono);color:var(--t45);white-space:nowrap}
+.srch .no{padding:14px 24px;font-size:12.5px;color:var(--t6);line-height:1.6}
+.srch .no .w{display:block;margin-top:5px;font:11px var(--mono);color:var(--t45)}
 .filters{display:flex;align-items:center;gap:6px;padding:0 24px;height:40px;border-bottom:1px solid var(--l08);flex:none;font-size:11.5px;white-space:nowrap;overflow:hidden}
 .f{padding:5px 10px;border-radius:4px;cursor:pointer;border:1px solid var(--l15);color:var(--ink)}
 .f.on{background:var(--lime);color:#111;border-color:var(--lime);font-weight:600}
@@ -675,24 +693,21 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
     <div class="cols2">
       <div class="prose">
         <p>augur reads pons v2 launches on Robinhood Chain, scores them and ranks them. The board runs here and on your own machine if you clone it, the alert bot is <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a>, and $AUGUR is on chain and past the curve. None of what follows is a promise of profit: the backtest is in the repository and it says that following the score does not pay. What the coin buys is the hosted half, and that is what gets built now.</p>
-        <p>Here is what gets built next, in order, with no dates. Anything marked <b>then</b> above does not exist. If a page on this site ever describes something as working when it is not, that is a bug worth reporting.</p>
+        <p>The newest of those is search: the board only ever showed the last six hours, and now the box above the list takes a ticker, a token address or a wallet and opens the card behind any of them, however old. Here is what gets built next, in order, with no dates. Anything marked <b>then</b> above does not exist. If a page on this site ever describes something as working when it is not, that is a bug worth reporting.</p>
 
-        <h2><span class="n">01</span>Find any token</h2>
-        <p>The feed shows the last six hours and nothing older. A search box takes an address and opens the card, or a ticker and lists every launch that has used it, who launched each one and whether it reached the pool. A deployer's address gets the same treatment: all of their launches on one list.</p>
-
-        <h2><span class="n">02</span>Holder tiers</h2>
+        <h2><span class="n">01</span>Holder tiers</h2>
         <p>Holding $AUGUR opens up the hosted half. Free stays what it is today: alerts arrive a minute after the score is written, API reads are limited per address. A holder links a wallet by signing a plain sentence in the bot, which costs no gas and hands over no key, and gets the alert the second the score is written, at any threshold, plus an API key and history exports. Sell below the line and the tier drops; it comes back a week after the balance does. The thresholds are set when this ships and will be printed here.</p>
 
-        <h2><span class="n">03</span>Follow a deployer</h2>
+        <h2><span class="n">02</span>Follow a deployer</h2>
         <p><code>/follow</code> an address in the bot. When that creator launches again you hear about it in the first second, with their record beside it: how many launches, how many reached the pool, the best peak. The card already computes that record; this is the subscription to it.</p>
 
-        <h2><span class="n">04</span>Where the fee goes, live</h2>
+        <h2><span class="n">03</span>Where the fee goes, live</h2>
         <p>Today the 1.5% creator fee lands in a wallet. The plan is a contract at that address that splits every fee as it arrives: a share to running the board, a share to holders in the quote asset on a schedule, a share to buying $AUGUR back. The $AUGUR page will show the split as it happens, every line linked to its transaction. The recipient can be changed on chain after the fact, so this ships when the contract is written and read, not before.</p>
 
-        <h2><span class="n">05</span>Creator tools</h2>
+        <h2><span class="n">04</span>Creator tools</h2>
         <p>Twelve thousand wallets launched something on pons in a single day this month. Before deploying, paste the parameters and get the score and its three reasons. After, an alert saying where the launch ranked against everything else that hour.</p>
 
-        <h2><span class="n red">06</span>Never</h2>
+        <h2><span class="n red">05</span>Never</h2>
         <div class="never">
           <div><i>x</i><span>Never asks for a private key, a seed phrase or an approval.</span></div>
           <div><i>x</i><span>Never holds funds, never trades, never touches a wallet.</span></div>
@@ -701,7 +716,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
           <div><i>x</i><span>Never quietly drops a validation result for being unflattering.</span></div>
         </div>
 
-        <h2><span class="n">07</span>How to check</h2>
+        <h2><span class="n">06</span>How to check</h2>
         <p>Commits show what shipped and when. The model page shows what the model scored on data it had not seen, and the scoreboard grades claims that were recorded before their outcomes existed. The $AUGUR page reads the coin's fee route from the chain, the same way it does for every other launch. If something here goes quiet for weeks, ask about it in public.</p>
       </div>
 
@@ -864,6 +879,12 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
   <div class="board" id="board">
     <div class="list">
       <div class="lhead"><b>Fresh launches</b><span class="m" id="lh-m">—</span><span class="live" id="lh-live"><span class="dot"></span>LIVE</span></div>
+      <div class="srch">
+        <input id="q" type="search" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="Search a ticker, or paste a token or wallet address">
+        <span class="kb">/</span>
+        <div class="res" id="q-res" hidden></div>
+      </div>
       <div class="stale" id="stale"></div>
       <div class="filters">
         <span class="f on" data-f="All">All</span>
@@ -1064,6 +1085,7 @@ function route() {
   document.querySelectorAll("[data-nav]").forEach((a) => a.classList.toggle("on", a.dataset.nav === S.page));
   document.body.style.overflow = S.page === "board" ? "hidden" : "";
   $("ft").classList.toggle("off", S.page === "board");
+  qClose();
   if (S.page === "board" && arg && arg.startsWith("0x")) openCard(arg.toLowerCase());
   if (S.page === "model") loadModel();
   if (S.page === "token") loadCoin();
@@ -1174,7 +1196,7 @@ const ROAD = [
   { tag: "shipped", cls: "done", title: "The terminal", d: "reads, scores, ranks, and waits the opening tax out" },
   { tag: "shipped", cls: "done", title: "The card", d: "creator, self-buy, exempt wallets, fee route, their history" },
   { tag: "shipped", cls: "done", title: "Hosted, with alerts", d: "this site and @AugurRHbot: same score, our node" },
-  { tag: "building", cls: "now", title: "Find any token", d: "an address or a ticker, and the card behind it" },
+  { tag: "shipped", cls: "done", title: "Find any token", d: "an address or a ticker, and the card behind it" },
   { tag: "then", cls: "next", title: "Holder tiers", d: "the bot and the API, opened by the balance" },
   { tag: "then", cls: "next", title: "Follow a deployer", d: "their next launch, in the first second" },
   { tag: "then", cls: "next", title: "Fee route, live", d: "a contract that splits the fee, a ledger that shows it" },
@@ -1189,7 +1211,7 @@ const SHIPPED = [
   { t: "Hosted board · getaugur.xyz", w: "Sep", ok: true },
   { t: "Alert bot · @AugurRHbot", w: "Sep", ok: true },
   { t: "$AUGUR · on chain, past the curve", w: "Sep", ok: true },
-  { t: "Search", w: "building", ok: false },
+  { t: "Search · ticker, token or wallet", w: "Sep", ok: true },
   { t: "Holder tiers", w: "not yet", ok: false },
 ];
 
@@ -1222,7 +1244,11 @@ function drawRoadmap() {
   layoutRoadmap();
 
   $("rm-count").textContent = shipped + " of " + n + " shipped";
-  $("rm-now").textContent = building ? building.title.toLowerCase() : "nothing in flight";
+  // With nothing marked as building the strip still has something true to say: what is next. A
+  // pulsing dot beside "nothing in flight" reads as abandoned, which is a worse lie than it looks.
+  const next = ROAD.find((m) => m.cls === "next");
+  $("rm-now").textContent = building ? building.title.toLowerCase()
+    : next ? "next · " + next.title.toLowerCase() : "nothing in flight";
 
   $("rm-ship").innerHTML = SHIPPED.map((s) =>
     '<div class="r' + (s.ok ? "" : " no") + '"><i>' + (s.ok ? "\u2713" : "\u00b7") + "</i><b>" +
@@ -1454,6 +1480,143 @@ function outstanding(d) {
   const h = d && d.card && d.card.creatorHistory;
   return h ? h.unread > 0 : false;
 }
+
+/**
+ * Search, in the list header.
+ *
+ * The feed is six hours long by design, so everything older than that is unreachable without a
+ * link someone already has. One box covers both ways in: a ticker, or an address that is either a
+ * token or the wallet that launched one.
+ *
+ * Two details keep it honest rather than merely quick. Answers are matched to the keystroke that
+ * asked for them, because a slow reply to "au" must not overwrite the answer to "augur" that
+ * arrived first. And an empty result says which kind of empty it is: a third of launches go through
+ * a router that hides the ticker until the name backfill has asked the contract, so "nothing found"
+ * and "not named yet" are different sentences, and the second one is not the token's fault.
+ */
+const Q = { timer: null, seq: 0, data: null, sel: 0, last: null };
+const sAge = (ts) => { const h = (Date.now() / 1000 - ts) / 3600; return h < 48 ? ago(ts) : Math.round(h / 24) + "d"; };
+
+function qClose() { $("q-res").hidden = true; Q.data = null; Q.last = null; Q.sel = 0; }
+
+function qInput() {
+  clearTimeout(Q.timer);
+  const raw = $("q").value.trim();
+  if (!raw) { qClose(); return; }
+  // 220 ms rather than something snappier, because the board shares one budget: the API refuses
+  // past 240 requests a minute from an address, and a fast typist on a shorter timer spends most of
+  // it on prefixes nobody reads. Repeating the query the box already answered is skipped outright.
+  Q.timer = setTimeout(qRun, 220);
+}
+
+async function qRun() {
+  const raw = $("q").value.trim();
+  if (!raw) { qClose(); return; }
+  if (raw === Q.last && Q.data) { qRender(); return; }
+  const seq = ++Q.seq;
+  let d;
+  try {
+    const r = await fetch("/api/search?q=" + encodeURIComponent(raw));
+    // A refusal must not be drawn as an empty result: "no launch matches" and "you asked too often"
+    // are different answers, and only one of them is about the token.
+    if (!r.ok) {
+      if (seq === Q.seq) {
+        Q.data = null; Q.last = null;
+        $("q-res").innerHTML = '<div class="no">' + (r.status === 429
+          ? "Too many searches for one minute. It will answer again shortly."
+          : "The board could not answer that just now.") + "</div>";
+        $("q-res").hidden = false;
+      }
+      return;
+    }
+    d = await r.json();
+  } catch { return; }
+  if (seq !== Q.seq) return;  // an older keystroke, answered late
+  Q.data = d; Q.last = raw; Q.sel = 0; qRender();
+}
+
+function qRender() {
+  const d = Q.data; if (!d) return;
+  const box = $("q-res");
+  const cov = d.coverage || {};
+  const since = cov.since ? new Date(cov.since * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short" }) : "—";
+  const n = (v) => (v || 0).toLocaleString();
+
+  if (!d.items || !d.items.length) {
+    const addr = /^0x[0-9a-f]{40}$/i.test(d.q || "");
+    box.innerHTML = '<div class="no">' + (addr
+      ? "Nothing at that address. It is not a launch this board has seen, and nothing has been launched from it."
+      : `No ticker starts with <b>${esc(d.q)}</b>.`)
+      + `<span class="w">${n(cov.launches)} launches indexed since ${since}`
+      + (addr ? "" : ` · ${n(cov.named)} have had a ticker read`) + "</span></div>";
+    box.hidden = false;
+    return;
+  }
+
+  const plural = d.total === 1 ? "launch" : "launches";
+  const head = d.kind === "creator"
+    ? `${n(d.total)} ${plural} by ${short(d.creator)} · ${n(d.graduated)} reached the pool`
+    : d.kind === "ticker"
+      ? `${n(d.total)} ${plural} used this ticker · ${n(d.graduated)} reached the pool`
+      : "one launch at this address";
+  const more = d.total > d.items.length ? ` · newest ${d.items.length} shown` : "";
+
+  // Nothing on a row repeats anything else on it. A search for a wallet drops the creator column,
+  // which would be the searched address twenty times over, and a launch whose ticker has not been
+  // read yet is named by its own address instead of by a bare question mark -- so the address moves
+  // to the left and the right side is left with the age alone.
+  box.innerHTML = `<div class="rh">${esc(head)}${esc(more)}</div>` + d.items.map((it, i) => `
+    <div class="rr${i === Q.sel ? " on" : ""}" data-token="${esc(it.token)}">
+      <span style="display:flex;align-items:baseline;min-width:0">${it.symbol
+        ? `<b>${esc(it.symbol)}</b>` : `<b class="un">${esc(short(it.token))}</b>`}<span class="n">${esc(it.name || (it.symbol ? "" : "ticker not read yet"))}</span></span>
+      <span class="${it.graduated ? "g" : ""}">${it.graduated ? "pool" : ""}</span>
+      <span class="w">${esc(d.kind === "creator" ? (it.symbol ? short(it.token) + " · " : "") : short(it.creator) + " · ")}${sAge(it.ts)}</span>
+    </div>`).join("");
+  box.hidden = false;
+}
+
+function qGo(token) {
+  qClose();
+  $("q").blur();
+  location.hash = "#/board/" + token;
+}
+
+function qKey(e) {
+  const items = Q.data && Q.data.items || [];
+  if (e.key === "Escape") { qClose(); $("q").blur(); return; }
+  if (e.key === "Enter") {
+    clearTimeout(Q.timer);
+    if (items.length) { e.preventDefault(); qGo(items[Q.sel].token); }
+    else qRun();
+    return;
+  }
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+  if (!items.length) return;
+  e.preventDefault();
+  Q.sel = (Q.sel + (e.key === "ArrowDown" ? 1 : items.length - 1)) % items.length;
+  qRender();
+  const on = $("q-res").querySelector(".rr.on");
+  if (on) on.scrollIntoView({ block: "nearest" });
+}
+
+$("q").addEventListener("input", qInput);
+$("q").addEventListener("keydown", qKey);
+$("q").addEventListener("focus", () => { if (Q.data) qRender(); });
+// mousedown rather than click: blur would tear the list down before a click could land on it.
+$("q-res").addEventListener("mousedown", (e) => {
+  const r = e.target.closest(".rr");
+  if (r) { e.preventDefault(); qGo(r.dataset.token); }
+});
+addEventListener("mousedown", (e) => { if (!e.target.closest(".srch")) qClose(); });
+addEventListener("keydown", (e) => {
+  if (e.key !== "/" || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (S.page !== "board") return;
+  const t = e.target;
+  if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;
+  e.preventDefault();
+  $("q").focus();
+  $("q").select();
+});
 
 async function openCard(token) {
   S.sel = token;

@@ -7,6 +7,7 @@ import { dataset, datasetAgeSec, datasetCachedOnly, datasetVersion, FEATURES, lo
 import { getMeta, openDb } from "./db.ts";
 import { contributions, type GbdtModel } from "./model/gbdt.ts";
 import { grade, modelId, pending, score as scoreLog, settled } from "./track.ts";
+import { normaliseName } from "./features.ts";
 import { formatUnits, quoteFromCache } from "./quote.ts";
 import { formatUsd, marketCapUsd, usdOf } from "./prices.ts";
 import { BLOCKS_PER_DAY } from "./config.ts";
@@ -365,6 +366,58 @@ const json = (res: import("node:http").ServerResponse, body: unknown, code = 200
   res.writeHead(code, { "content-type": "application/json; charset=utf-8", "content-length": Buffer.byteLength(s) });
   res.end(s);
 };
+
+/**
+ * Search, over the launches this database has already seen.
+ *
+ * Two questions share one box. An address is either a token, and then the answer is its card, or a
+ * wallet, and then the answer is everything that wallet launched. Anything else is read as a ticker.
+ *
+ * A ticker is matched on `symbol_key`, the normalised form the clone detection already keeps, so
+ * PEPE, pepe and a spaced emoji version of it are one search rather than three. The match is a
+ * prefix written as a range instead of a LIKE, because LIKE is only rewritten into an index scan
+ * under a collation this column does not have: the same lookup is 0.3 ms as a range and 60 ms as a
+ * LIKE. What is not searched is the free-text name, for the same reason -- there is no index that
+ * could serve it, and a scan of 177,000 rows on every keystroke is not worth the launches it would
+ * add.
+ *
+ * The other limit is honest rather than technical. A third of launches go through a router whose
+ * calldata does not decode, so their ticker is unknown until `npm run names` has asked the contract
+ * for it, and until then no search can find them by name. Every answer carries how many launches
+ * are indexed and how many have a ticker, so an empty result can say which of the two it is.
+ */
+const SEARCH_MAX = 20;
+const ADDRESS = /^0x[0-9a-f]{40}$/;
+const SEARCH_SELECT = `SELECT l.token, l.symbol, l.name, l.ts, l.launch_sender, l.deployer,
+         (g.token IS NOT NULL) graduated
+  FROM launches l LEFT JOIN graduations g ON g.token = l.token`;
+
+type SearchHit = {
+  token: string; symbol: string | null; name: string | null; ts: number;
+  launch_sender: string | null; deployer: string; graduated: number;
+};
+
+const searchItems = (rows: SearchHit[]): unknown[] => rows.map((r) => ({
+  token: r.token,
+  symbol: r.symbol,
+  name: r.name,
+  ts: r.ts,
+  graduated: Boolean(r.graduated),
+  // The same distinction the card draws: the creator is who sent the transaction, and the deployer
+  // is only who the event names, which on a sixth of launches is a contract.
+  creator: r.launch_sender ?? r.deployer,
+  viaContract: Boolean(r.launch_sender && r.launch_sender !== r.deployer),
+}));
+
+let coverageCache: { at: number; body: { launches: number; named: number; since: number | null } } | null = null;
+function coverage(): { launches: number; named: number; since: number | null } {
+  if (coverageCache && Date.now() - coverageCache.at < 60_000) return coverageCache.body;
+  const r = db.prepare(
+    "SELECT count(*) launches, count(symbol_key) named, min(ts) since FROM launches",
+  ).get() as { launches: number; named: number; since: number | null };
+  coverageCache = { at: Date.now(), body: r };
+  return r;
+}
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${CFG.boardPort}`);
@@ -759,6 +812,47 @@ const server = createServer(async (req, res) => {
       items: rows.map((r) => ({ ...r, meta: byToken.get(r.token) ?? null })),
     };
     sendJson(res, holdFeed(feedKey, feedVersion, payload));
+    return;
+  }
+
+  if (url.pathname === "/api/search") {
+    const raw = (url.searchParams.get("q") ?? "").trim();
+    if (!raw) { json(res, { q: "", kind: "empty", total: 0, items: [], coverage: coverage() }); return; }
+
+    const q = raw.toLowerCase();
+    if (ADDRESS.test(q)) {
+      const one = db.prepare(`${SEARCH_SELECT} WHERE l.token = ?`).get(q) as SearchHit | undefined;
+      if (one) { json(res, { q: raw, kind: "token", total: 1, items: searchItems([one]), coverage: coverage() }); return; }
+
+      const c = db.prepare(`SELECT count(*) n, coalesce(sum(g.token IS NOT NULL), 0) g
+        FROM launches l LEFT JOIN graduations g ON g.token = l.token
+        WHERE l.launch_sender = ? OR l.deployer = ?`).get(q, q) as { n: number; g: number };
+      if (!c.n) { json(res, { q: raw, kind: "none", total: 0, items: [], coverage: coverage() }); return; }
+
+      const rows = db.prepare(`${SEARCH_SELECT} WHERE l.launch_sender = ? OR l.deployer = ?
+        ORDER BY l.block DESC LIMIT ?`).all(q, q, SEARCH_MAX) as SearchHit[];
+      json(res, {
+        q: raw, kind: "creator", total: c.n, graduated: c.g,
+        creator: q, items: searchItems(rows), coverage: coverage(),
+      });
+      return;
+    }
+
+    const key = normaliseName(raw);
+    if (!key) { json(res, { q: raw, kind: "none", total: 0, items: [], coverage: coverage() }); return; }
+    const hi = key.slice(0, -1) + String.fromCharCode(key.charCodeAt(key.length - 1) + 1);
+
+    const c = db.prepare(`SELECT count(*) n, coalesce(sum(g.token IS NOT NULL), 0) g
+      FROM launches l LEFT JOIN graduations g ON g.token = l.token
+      WHERE l.symbol_key >= ? AND l.symbol_key < ?`).get(key, hi) as { n: number; g: number };
+    if (!c.n) { json(res, { q: raw, kind: "none", total: 0, items: [], coverage: coverage() }); return; }
+
+    const rows = db.prepare(`${SEARCH_SELECT} WHERE l.symbol_key >= ? AND l.symbol_key < ?
+      ORDER BY (l.symbol_key = ?) DESC, l.block DESC LIMIT ?`).all(key, hi, key, SEARCH_MAX) as SearchHit[];
+    json(res, {
+      q: raw, kind: "ticker", total: c.n, graduated: c.g,
+      items: searchItems(rows), coverage: coverage(),
+    });
     return;
   }
 
