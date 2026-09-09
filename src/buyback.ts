@@ -134,18 +134,38 @@ export type BuyPlan =
  * The refusals are the same shape as the payout's, and for the same reason: every one of them is a
  * configuration that would spend somebody's money in a way they did not mean.
  */
+export type BuySize = { ok: false; reason: string; spend: bigint } | { ok: true; spend: bigint };
+
+/**
+ * How much one run would spend, before anybody has asked the pool what that buys.
+ *
+ * On its own because the size has to be known first: the simulation that finds the price asks about
+ * a specific amount, so the amount cannot wait for the price. Asking `planBuy` with a made-up
+ * expected output did exactly that and refused every run, because one unit less one percent of
+ * slippage rounds to a floor of nothing.
+ */
+export function sizeBuy(input: { balance: bigint; reserve: bigint; minimum: bigint; max?: bigint }): BuySize {
+  const { balance, reserve, minimum } = input;
+  if (balance <= reserve) return { ok: false, reason: "nothing above the gas reserve", spend: 0n };
+  let spend = balance - reserve;
+  if (input.max !== undefined && input.max > 0n && spend > input.max) spend = input.max;
+  if (spend < minimum) {
+    return { ok: false, reason: "below the floor for a run, so the gas would cost more than the buy", spend };
+  }
+  return { ok: true, spend };
+}
+
 export function planBuy(input: {
   balance: bigint; reserve: bigint; minimum: bigint; max?: bigint;
   expected: bigint; slippageBps: number; decimals: number;
 }): BuyPlan {
-  const { balance, reserve, minimum, expected, slippageBps } = input;
+  const { expected, slippageBps } = input;
   const no = (reason: string, spend = 0n): BuyPlan => ({ ok: false, reason, spend });
 
   if (slippageBps < 0 || slippageBps >= 10_000) return no("the slippage allowance is not a share of a whole");
-  if (balance <= reserve) return no("nothing above the gas reserve");
-  let spend = balance - reserve;
-  if (input.max !== undefined && input.max > 0n && spend > input.max) spend = input.max;
-  if (spend < minimum) return no("below the floor for a run, so the gas would cost more than the buy", spend);
+  const size = sizeBuy(input);
+  if (!size.ok) return no(size.reason, size.spend);
+  const { spend } = size;
   if (expected <= 0n) return no("the pool would pay nothing for this size", spend);
 
   const minOut = floorFor(expected, slippageBps);

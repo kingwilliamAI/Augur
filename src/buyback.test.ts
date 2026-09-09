@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { decodeAbiParameters, parseAbiParameters } from "viem";
 
-import { buyCalldata, findOutput, floorFor, planBuy, poolKeyFor } from "./buyback.ts";
+import { buyCalldata, findOutput, floorFor, planBuy, poolKeyFor, sizeBuy } from "./buyback.ts";
 import { parseUnits } from "./payout.ts";
 
 /**
@@ -126,4 +126,14 @@ test("a cap keeps a first run small", () => {
   const p = plan({ balance: ETH("10"), max: ETH("0.05") });
   assert.equal(p.ok, true);
   assert.equal(p.spend, ETH("0.05"));
+});
+
+test("the size is settled before the pool is asked, so no price is needed to ask", () => {
+  // The first live run refused with "the floor rounds to nothing": sizing went through planBuy with
+  // a placeholder output of one unit, and one unit less any slippage is a floor of zero.
+  const size = sizeBuy({ balance: ETH("0.025"), reserve: ETH("0.005"), minimum: ETH("0.01"), max: ETH("0.02") });
+  assert.deepEqual(size, { ok: true, spend: ETH("0.02") });
+  assert.equal(sizeBuy({ balance: ETH("0.005"), reserve: ETH("0.005"), minimum: ETH("0.01") }).ok, false);
+  const plan = planBuy({ balance: ETH("0.025"), reserve: ETH("0.005"), minimum: ETH("0.01"), max: ETH("0.02"), expected: 1n, slippageBps: 100, decimals: 18 });
+  assert.equal(plan.ok, false, "a real answer of one unit still cannot carry a floor");
 });

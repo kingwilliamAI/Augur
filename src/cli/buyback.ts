@@ -1,6 +1,6 @@
 import { createPublicClient, createWalletClient, decodeEventLog, http, parseAbi, type Address } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { buyCalldata, findOutput, planBuy, poolKeyFor, ROUTER_ABI } from "../buyback.ts";
+import { buyCalldata, findOutput, planBuy, poolKeyFor, ROUTER_ABI, sizeBuy } from "../buyback.ts";
 import { robinhood, sleep } from "../chain.ts";
 import { CFG, EXPLORER } from "../config.ts";
 import { openDb } from "../db.ts";
@@ -96,7 +96,7 @@ and it should hold nothing else.`);
   console.log(`balance    ${format(balance, 18)} ETH   reserve ${format(reserve, 18)} ETH`);
 
   // The size first, so the simulation asks about the amount that would really be sent.
-  const sizing = planBuy({ balance, reserve, minimum, max: cap, expected: 1n, slippageBps: CFG.buyback.slippageBps, decimals });
+  const sizing = sizeBuy({ balance, reserve, minimum, max: cap });
   if (!sizing.ok) {
     console.log(`\nnothing to do: ${sizing.reason}.`);
     return;
