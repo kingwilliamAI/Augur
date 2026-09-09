@@ -6,9 +6,10 @@ import assert from "node:assert/strict";
 
 const dir = mkdtempSync(join(tmpdir(), "augur-fees-"));
 process.env.DB_PATH = join(dir, "test.db");
+process.env.COIN_TOKEN = "0xc0ffee";
 
 const { openDb } = await import("./db.ts");
-const { currentFeeRecipient, feeRecipients } = await import("./fees.ts");
+const { currentFeeRecipient, feeLedger, feeRecipients } = await import("./fees.ts");
 
 /**
  * Who the fee goes to, as the ledger and the payout must see it.
@@ -26,8 +27,7 @@ const B = "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const C = "0xcccccccccccccccccccccccccccccccccccccccc";
 
 let seq = 0;
-function launch(recipient: string | null, block = 100): string {
-  const token = "0xtok" + (seq++);
+function launch(recipient: string | null, block = 100, token = "0xtok" + (seq++)): string {
   db.prepare(`INSERT INTO launches (token, curve, deployer, pair_token, launch_config_id,
     graduation_threshold_wei, graduation_threshold_eth, block, tx, log_index, ts, first_seen_at,
     creator_fee_recipient)
@@ -81,4 +81,19 @@ test("moving back to an earlier wallet does not list it twice", () => {
 test("an unknown token has nobody on record", () => {
   assert.deepEqual(feeRecipients(db, "0xnope"), []);
   assert.equal(currentFeeRecipient(db, "0xnope"), null);
+});
+
+test("the ledger owes each wallet separately, so an over-claimed old wallet hides nothing", () => {
+  const coin = launch(A, 100, "0xc0ffee");
+  move(coin, A, B, 250);
+  const credit = db.prepare(`INSERT INTO fee_events (tx, log_index, kind, recipient, depositor, amount_wei, amount_eth, block, ts)
+    VALUES (?,?,?,?,?,?,?,?,?)`);
+  credit.run("0xe1", 0, "credited", A, "0xd", "1000", 0, 110, 1);
+  credit.run("0xe2", 0, "claimed", A, null, "1500", 0, 120, 2);
+  credit.run("0xe3", 0, "credited", B, "0xd", "700", 0, 260, 3);
+  const led = feeLedger(db);
+  assert.equal(led.recipient, B);
+  assert.equal(led.credited.wei, "1700");
+  assert.equal(led.claimed.wei, "1500");
+  assert.equal(led.unclaimed.wei, "700");
 });

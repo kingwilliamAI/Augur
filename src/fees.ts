@@ -318,13 +318,26 @@ export function feeLedger(db: DB, limit = 25): FeeLedger {
 
   const events = recipients.length
     ? db.prepare(
-      `SELECT kind, amount_wei, ts FROM fee_events WHERE recipient IN (${recipients.map(() => "?").join(",")})`,
-    ).all(...recipients.map((r) => r.address)) as Array<{ kind: string; amount_wei: string; ts: number }>
+      `SELECT kind, recipient, amount_wei, ts FROM fee_events WHERE recipient IN (${recipients.map(() => "?").join(",")})`,
+    ).all(...recipients.map((r) => r.address)) as Array<{ kind: string; recipient: string; amount_wei: string; ts: number }>
     : [];
   const credited = events.filter((e) => e.kind === "credited");
   const claimed = events.filter((e) => e.kind === "claimed");
   const creditedWei = sumWei(credited);
   const claimedWei = sumWei(claimed);
+  /**
+   * What is still sitting in the escrow, wallet by wallet.
+   *
+   * The escrow keeps one balance per recipient, so a claim by the wallet that used to take the fee
+   * says nothing about what the current one has waiting. Netting the two together showed nothing
+   * owed while the new wallet had credits nobody had claimed.
+   */
+  let unclaimedWei = 0n;
+  for (const r of recipients) {
+    const owed = sumWei(credited.filter((e) => e.recipient === r.address))
+      - sumWei(claimed.filter((e) => e.recipient === r.address));
+    if (owed > 0n) unclaimedWei += owed;
+  }
 
   const splits = db.prepare(`
     SELECT tx, ts, asset, total_wei, server_wei, holders_wei, buyback_wei
@@ -383,10 +396,7 @@ export function feeLedger(db: DB, limit = 25): FeeLedger {
       : paidTotals.c > 0 ? "wallet" : "none",
     credited: { wei: creditedWei.toString(), eth: toEth(creditedWei), count: credited.length },
     claimed: { wei: claimedWei.toString(), eth: toEth(claimedWei), count: claimed.length },
-    unclaimed: {
-      wei: (creditedWei - claimedWei).toString(),
-      eth: toEth(creditedWei > claimedWei ? creditedWei - claimedWei : 0n),
-    },
+    unclaimed: { wei: unclaimedWei.toString(), eth: toEth(unclaimedWei) },
     payouts: {
       count: paidTotals.c,
       nodesEth: paidTotals.nodes / 1e18,
