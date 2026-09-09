@@ -1653,7 +1653,10 @@ async function loadCoin() {
   $("coin-sub").textContent = (d.pool && d.pool.lastUsd !== null ? "market cap " + usd(d.pool.lastUsd) + " \u00b7 " : "") + "quoted in " + d.quoteSymbol;
   // Only links that were checked. Dexscreener addresses a pons market by pool id, which their API
   // confirmed for this token; pons keys its own page off the launchpad path, not /token.
-  $("coin-buy").href = "https://app.uniswap.org/swap?outputCurrency=" + d.token;
+  // Without `chain` Uniswap opens on mainnet, where this address does not exist, so the swap
+  // lands with nothing selected. `robinhood` is the slug their own explore links use for 4663.
+  $("coin-buy").href =
+    "https://app.uniswap.org/swap?chain=robinhood&inputCurrency=ETH&outputCurrency=" + d.token;
   const out = (href, text) => '<a href="' + href + '" target="_blank" rel="noopener">' + text + " \u2197</a>";
   $("coin-links").innerHTML =
     (d.poolId ? out("https://dexscreener.com/robinhood/" + d.poolId, "dex screener") : "") +
