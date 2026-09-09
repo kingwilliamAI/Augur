@@ -51,8 +51,8 @@ export const CFG = {
    * The handle only, without the @ or the URL. Empty hides the line rather than showing a dead one.
    */
   coinX: str("COIN_X", "kingwilliam_"),
-  /** Public source for the coin, once there is one. Empty until then. */
-  coinRepo: str("COIN_REPO", ""),
+  /** Public source for the coin. Empty hides the line rather than showing a dead one. */
+  coinRepo: str("COIN_REPO", "https://github.com/kingwilliamAI/Augur"),
   dbPath: str("DB_PATH", "./data/augur.db"),
   boardPort: num("BOARD_PORT", 4663),
   /**
