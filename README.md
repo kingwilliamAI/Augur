@@ -283,10 +283,52 @@ Nothing here needs a key, because nothing here signs.
 | `train` · `validate` | fit and print held-out metrics · rolling-origin folds |
 | `nightly` | backfill, enrich, retrain, in that order |
 | `telegram` | optional bot, the only part of this project that talks to a third party |
+| `fees` | where the curve fee went: escrow credits, claims, and every split the contract made |
+| `payout` | splits the fee wallet three ways. Signs, and dry-runs by default |
+| `buyback` | spends the buyback wallet on the token, at a price the chain quoted first. Signs, and dry-runs by default |
 | `tail` | full block bodies, for native transfers that emit no logs. Forward-only |
 | `traders` | every curve trade on the chain, folded into who has a record |
 
 <br>
+
+## Where the fee goes
+
+Every trade on a curve pays a fee, and every swap in the pool afterwards pays one too; both go to the
+address the launch named. `npm run fees` reads that ledger off the chain: what the escrow credited,
+what has been claimed, what the pool hook swept. The hosted board serves it at `/api/fees` and
+draws it at [getaugur.xyz/#/fees](https://getaugur.xyz/#/fees).
+
+It is split three ways: the nodes and the nightly retrain, buying $AUGUR back, and the people who
+build it. There are two ways to carry that out, and this repository has both.
+
+`npm run payout` is the one that works today. It reads the fee wallet's balance, holds back a gas
+reserve, refuses anything below a floor, and sends the three shares on, writing each transfer to the
+ledger once it is mined. The shares ship at zero so it does nothing until somebody sets them, a run
+prints its plan and stops unless `--send` is passed, and `--every 3h` keeps it on a cadence. The key
+it uses comes from `.env` on the operator's own machine; a clone never runs it, and neither the board
+nor the bot can reach it.
+
+`npm run buyback` spends the third share. It buys the token in the pool pons graduated it into,
+through the router real buys of this token go through, and both the router and the pool key were read
+off a transaction that worked rather than assembled from a guess: six other pools exist for this
+token, opened by strangers at fee tiers up to eighty percent. There is no price feed and no quoter
+contract. The command asks the chain to simulate the swap at a floor and raises the floor until the
+simulation refuses, which converges on what the pool would really pay, through the hook's fee and the
+ticks; the floor that finally goes on chain is that number less a stated slippage, so a sandwiched
+fill reverts instead of settling. A fill that lands exactly on its floor is marked as such in the
+ledger, because that is what being front-run looks like afterwards. It dry-runs by default too, and
+`--every 3h` fuzzes its own interval, since a buy of a predictable size at a predictable minute is
+the easiest thing on a chain to trade ahead of.
+
+The two together are the only commands here that sign anything, which is why they are commands of
+their own. Tokens bought stay in the buyback wallet: burning them, locking them or holding them is a
+separate decision this tool deliberately has no opinion about.
+
+`contracts/FeeSplitter.sol` is the version that needs nobody to run it: a contract that takes the
+wallet's place as the fee recipient and divides every payout as it is released, in shares fixed at
+deployment, with no owner, no setter, no pause and no sweep. It is written and not deployed, and
+DEPLOY.md section 10 has both paths. The page names which of the two paid each line, because a
+habit and a guarantee are not the same thing and the difference is the reader's to weigh.
 
 ## Where it lets you down
 
@@ -330,7 +372,11 @@ A wallet is proved by signing a sentence. It costs no gas, moves nothing, and ha
 `/link` in the bot opens a page on the hosted board that asks the wallet for one signature and posts
 it back; `/link 0x…` instead hands you the sentence to sign wherever you like and takes it back with
 `/verify 0x…`. `/unlink` forgets the wallet, the tier and the key together. There is no command and
-no page anywhere in this project that asks for a private key, a seed, an approval, or a transaction.
+no page anywhere in this project that asks a reader for a private key, a seed, an approval, or a
+transaction. The exceptions are the two operator commands above, `npm run payout` and `npm run
+buyback`, which split the fee wallet and spend the buyback share: they sign with keys only the
+operator has, in processes nobody else starts, and no part of the scanner, the board or the bot can
+reach them.
 
 The connect button on the hosted site is the one place any of this touches a wallet, and it does two
 things: reads the address, and asks for that one signature. A reader who never wants to connect

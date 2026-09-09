@@ -53,6 +53,64 @@ export const CFG = {
   coinX: str("COIN_X", "kingwilliam_"),
   /** Public source for the coin. Empty hides the line rather than showing a dead one. */
   coinRepo: str("COIN_REPO", "https://github.com/kingwilliamAI/Augur"),
+  /**
+   * The fee splitter, once one is deployed: see contracts/FeeSplitter.sol and DEPLOY.md.
+   *
+   * Empty means the curve fee still arrives at whatever wallet the launch names, and the fees page
+   * says so rather than describing a split that is not in force. The shares are not configured here
+   * on purpose: they are immutable in the contract, so the page reads them from it and nobody has to
+   * trust a number typed into a config file.
+   */
+  feeSplitter: str("FEE_SPLITTER", "").toLowerCase(),
+  /**
+   * The three wallets the fee is split between, and their shares, for `npm run payout`.
+   *
+   * Every share ships at zero, which makes the payout command refuse to run until somebody has
+   * decided what the split is. A default here would be a number nobody chose, quietly moving real
+   * money the first time the command was tried.
+   *
+   * The key that signs is deliberately not in this object. It is read once, inside the payout
+   * command, and never travels with the rest of the configuration.
+   */
+  payout: {
+    nodes: str("PAYOUT_NODES", "").toLowerCase(),
+    buyback: str("PAYOUT_BUYBACK", "").toLowerCase(),
+    team: str("PAYOUT_TEAM", "").toLowerCase(),
+    nodesBps: num("PAYOUT_NODES_BPS", 0),
+    buybackBps: num("PAYOUT_BUYBACK_BPS", 0),
+    teamBps: num("PAYOUT_TEAM_BPS", 0),
+    /** Left in the wallet so it can always pay for the next run's gas. */
+    reserveEth: str("PAYOUT_RESERVE_ETH", "0.01"),
+    /** Below this a run is refused: three transfers cost gas whatever they carry. */
+    minimumEth: str("PAYOUT_MIN_ETH", "0.02"),
+    /** Sending needs an endpoint that accepts eth_sendRawTransaction; the logs one does. */
+    rpcUrl: str("PAYOUT_RPC_URL", ""),
+  },
+  /**
+   * Buying the token back with the share the payout set aside for it.
+   *
+   * The router and the pool are not guesses: both were read off a transaction that really bought
+   * this token, and the pool key is the one pons graduated it into. Six other pools exist for the
+   * same token, opened by strangers at fee tiers up to eighty percent, which is exactly why these
+   * are pinned here and not discovered at runtime.
+   */
+  buyback: {
+    /** UniversalRouter on Robinhood Chain, verified by decoding a real buy. */
+    router: str("BUYBACK_ROUTER", "0x8876789976decbfcbbbe364623c63652db8c0904").toLowerCase(),
+    /** Empty follows COIN_TOKEN, which is the point of a buyback. */
+    token: str("BUYBACK_TOKEN", "").toLowerCase(),
+    /** The pool charges nothing: pons takes its fee at the hook instead. */
+    poolFee: num("BUYBACK_POOL_FEE", 0),
+    tickSpacing: num("BUYBACK_TICK_SPACING", 200),
+    /** Empty uses the factory's own hook address from ADDR. */
+    hook: str("BUYBACK_HOOK", "").toLowerCase(),
+    /** How far below the simulated price the floor is allowed to sit. 100 = 1%. */
+    slippageBps: num("BUYBACK_SLIPPAGE_BPS", 100),
+    reserveEth: str("BUYBACK_RESERVE_ETH", "0.005"),
+    minimumEth: str("BUYBACK_MIN_ETH", "0.01"),
+    deadlineSec: num("BUYBACK_DEADLINE_SEC", 300),
+    rpcUrl: str("BUYBACK_RPC_URL", ""),
+  },
   dbPath: str("DB_PATH", "./data/augur.db"),
   boardPort: num("BOARD_PORT", 4663),
   /**

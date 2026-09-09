@@ -58,6 +58,25 @@ export const escrowAbi = parseAbi([
 ]);
 
 /**
+ * The fee splitter in `contracts/FeeSplitter.sol`, once one is deployed and named in .env.
+ *
+ * The shares and the three destinations are immutable in the contract, so a reader checking the
+ * ledger page against the chain needs only these two events: what arrived, and how it left. There is
+ * no setter to watch and no owner to trust, which is the reason the contract is worth deploying at
+ * all rather than promising the same split by hand.
+ */
+export const splitterAbi = parseAbi([
+  "function server() view returns (address)",
+  "function holders() view returns (address)",
+  "function buyback() view returns (address)",
+  "function serverBps() view returns (uint16)",
+  "function holdersBps() view returns (uint16)",
+  "function buybackBps() view returns (uint16)",
+  "event Received(address indexed from, uint256 amount)",
+  "event Split(address indexed asset, uint256 total, uint256 toServer, uint256 toHolders, uint256 toBuyback)",
+]);
+
+/**
  * The launch entrypoint. `snipeTaxExemptions` is the list of wallets the creator waived the
  * opening tax for: the single most telling field on a fresh launch, and the reason the card
  * decodes the launch transaction's input rather than reading state alone.
@@ -79,6 +98,7 @@ export const TOPIC = {
   snipeTaxCharged: toEventSelector("SnipeTaxCharged(address,uint256)"),
   credited: toEventSelector("Credited(address,address,uint256)"),
   claimed: toEventSelector("Claimed(address,uint256)"),
+  split: toEventSelector("Split(address,uint256,uint256,uint256,uint256)"),
 } as const;
 
 /** getLaunchedToken().phase */

@@ -18,6 +18,7 @@ import { preview, rankedAtLaunch } from "./preview.ts";
 import { BLOCKS_PER_DAY } from "./config.ts";
 import { CFG } from "./config.ts";
 import { indexCurve } from "./curve.ts";
+import { feeLedger } from "./fees.ts";
 import { graduationCapUsd, poolCaps, quotePerToken } from "./pool.ts";
 import { logsClient, sleep, stateClient, withRetry } from "./chain.ts";
 
@@ -631,6 +632,16 @@ async function handle(req: import("node:http").IncomingMessage, res: import("nod
   if (url.pathname === "/api/health") { json(res, health()); return; }
 
   if (url.pathname === "/api/stats") { json(res, stats()); return; }
+
+  /**
+   * Where the curve fee went.
+   *
+   * Read out of logs by `npm run fees` and written by the two operator commands rather than computed
+   * here, so this endpoint is a database read like every other one. It answers before anything has
+   * been split as well as after: until then it is the fee arriving at the wallet the launch names,
+   * which is a fact worth publishing on its own and the thing the split is meant to replace.
+   */
+  if (url.pathname === "/api/fees") { json(res, feeLedger(db)); return; }
 
   if (url.pathname === "/api/model") {
     model = loadModel();

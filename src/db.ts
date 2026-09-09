@@ -428,6 +428,70 @@ CREATE TABLE IF NOT EXISTS fee_events (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS ix_fee_recipient ON fee_events(recipient);
 
+-- What the splitter did with the fees, one row per release.
+--
+-- The three destinations are fixed in the contract and the shares are immutable, so this table is
+-- not where the arrangement is kept: it is where the arrangement is checked. Every row carries the
+-- transaction it came from, which is the whole point of putting the split on chain rather than
+-- describing it on a page.
+CREATE TABLE IF NOT EXISTS fee_splits (
+  tx           TEXT NOT NULL,
+  log_index    INTEGER NOT NULL,
+  -- The zero address for the chain's own currency, or the ERC-20 the fee arrived in.
+  asset        TEXT NOT NULL,
+  total_wei    TEXT NOT NULL,
+  server_wei   TEXT NOT NULL,
+  holders_wei  TEXT NOT NULL,
+  buyback_wei  TEXT NOT NULL,
+  total_eth    REAL NOT NULL,
+  block        INTEGER NOT NULL,
+  ts           INTEGER NOT NULL,
+  PRIMARY KEY (tx, log_index)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_splits_block ON fee_splits(block DESC);
+
+-- Payouts made by the wallet itself, one row per transfer, written after the receipt.
+--
+-- The splitter contract and this table describe the same arrangement carried out two different ways,
+-- and the ledger page says which paid each line rather than blending them. A row is written only
+-- once the transaction is mined, so a run that dies halfway leaves what actually happened and not
+-- what was intended: the point of a ledger is that it cannot flatter the operator.
+--
+-- run_id groups the transfers of one run, so three lines a second apart read as one split.
+CREATE TABLE IF NOT EXISTS payouts (
+  tx         TEXT PRIMARY KEY,
+  run_id     TEXT NOT NULL,
+  kind       TEXT NOT NULL,
+  asset      TEXT NOT NULL,
+  sender     TEXT NOT NULL,
+  address    TEXT NOT NULL,
+  amount_wei TEXT NOT NULL,
+  amount_eth REAL NOT NULL,
+  bps        INTEGER NOT NULL,
+  block      INTEGER,
+  ts         INTEGER NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_payouts_ts ON payouts(ts DESC);
+
+-- Buybacks, one row per swap, written after the receipt.
+--
+-- What was spent, what came back, and the floor the swap was allowed to settle at. The floor is kept
+-- because it is the only way to read a bad fill afterwards: a buy that landed exactly on its floor
+-- was a buy that got sandwiched, and a ledger that stored only the outcome could not say so.
+CREATE TABLE IF NOT EXISTS buybacks (
+  tx           TEXT PRIMARY KEY,
+  wallet       TEXT NOT NULL,
+  token        TEXT NOT NULL,
+  spent_wei    TEXT NOT NULL,
+  spent_eth    REAL NOT NULL,
+  received     TEXT NOT NULL,
+  min_out      TEXT NOT NULL,
+  price_eth    REAL NOT NULL,
+  block        INTEGER,
+  ts           INTEGER NOT NULL
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_buybacks_ts ON buybacks(ts DESC);
+
 CREATE TABLE IF NOT EXISTS fee_recipient_changes (
   token     TEXT NOT NULL,
   tx        TEXT NOT NULL,
