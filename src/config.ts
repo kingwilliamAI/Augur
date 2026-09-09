@@ -62,6 +62,30 @@ export const CFG = {
    * trust a number typed into a config file.
    */
   feeSplitter: str("FEE_SPLITTER", "").toLowerCase(),
+  /**
+   * The three wallets the fee is split between, and their shares, for `npm run payout`.
+   *
+   * Every share ships at zero, which makes the payout command refuse to run until somebody has
+   * decided what the split is. A default here would be a number nobody chose, quietly moving real
+   * money the first time the command was tried.
+   *
+   * The key that signs is deliberately not in this object. It is read once, inside the payout
+   * command, and never travels with the rest of the configuration.
+   */
+  payout: {
+    nodes: str("PAYOUT_NODES", "").toLowerCase(),
+    buyback: str("PAYOUT_BUYBACK", "").toLowerCase(),
+    team: str("PAYOUT_TEAM", "").toLowerCase(),
+    nodesBps: num("PAYOUT_NODES_BPS", 0),
+    buybackBps: num("PAYOUT_BUYBACK_BPS", 0),
+    teamBps: num("PAYOUT_TEAM_BPS", 0),
+    /** Left in the wallet so it can always pay for the next run's gas. */
+    reserveEth: str("PAYOUT_RESERVE_ETH", "0.01"),
+    /** Below this a run is refused: three transfers cost gas whatever they carry. */
+    minimumEth: str("PAYOUT_MIN_ETH", "0.02"),
+    /** Sending needs an endpoint that accepts eth_sendRawTransaction; the logs one does. */
+    rpcUrl: str("PAYOUT_RPC_URL", ""),
+  },
   dbPath: str("DB_PATH", "./data/augur.db"),
   boardPort: num("BOARD_PORT", 4663),
   /**

@@ -36,7 +36,8 @@
     "backtest": "node --no-warnings src/cli/backtest.ts",
     "patterns": "node --no-warnings src/cli/patterns.ts",
     "early": "node --no-warnings src/cli/early.ts",
-    "fees": "node --no-warnings src/cli/fees.ts"
+    "fees": "node --no-warnings src/cli/fees.ts",
+    "payout": "node --no-warnings src/cli/payout.ts"
   },
   "dependencies": {
     "viem": "^2.56.3"

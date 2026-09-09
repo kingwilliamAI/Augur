@@ -196,8 +196,15 @@ export type FeeLedger = {
   recipient: string | null;
   recipientUrl: string | null;
   splitter: SplitConfig | null;
-  /** True once the recipient is the splitter, which is when the arrangement stops being a promise. */
-  live: boolean;
+  /**
+   * How the fee is actually being divided right now.
+   *
+   * "contract" once the launch pays the splitter, which is the version nobody has to trust;
+   * "wallet" when the operator's own command has been splitting it, which is a habit with a ledger
+   * behind it; "none" when neither has happened yet. The page prints the difference rather than
+   * flattening it, because the difference is the only thing a reader is being asked to weigh.
+   */
+  mode: "contract" | "wallet" | "none";
   credited: { wei: string; eth: number; count: number };
   claimed: { wei: string; eth: number; count: number };
   unclaimed: { wei: string; eth: number };
@@ -210,6 +217,22 @@ export type FeeLedger = {
    * be understating the answer by whichever half it left out.
    */
   income: { curveEth: number; poolQuote: number; poolUsd: number | null; sweeps: number; quoteSymbol: string | null };
+  /**
+   * What the wallet itself paid out, when the split is run in software rather than by a contract.
+   *
+   * Kept apart from `splits` rather than merged into it, because the difference is the whole point:
+   * a contract cannot send the money anywhere else and a wallet can. A page that blended the two
+   * would be claiming a guarantee for lines that only ever had a habit behind them.
+   */
+  payouts: {
+    count: number;
+    nodesEth: number; buybackEth: number; teamEth: number;
+    recent: Array<{
+      tx: string; url: string; ts: number; kind: string; address: string;
+      addressUrl: string; asset: string; amountEth: number; bps: number;
+    }>;
+    lastTs: number | null;
+  };
   splits: {
     count: number; totalEth: number; serverEth: number; holdersEth: number; buybackEth: number;
     recent: Array<{
@@ -262,6 +285,17 @@ export function feeLedger(db: DB, limit = 25): FeeLedger {
            coalesce(sum(CAST(buyback_wei AS REAL)),0) b
     FROM fee_splits`).get() as { c: number; t: number; s: number; h: number; b: number };
 
+  const paid = db.prepare(`
+    SELECT tx, ts, kind, asset, address, amount_wei, bps FROM payouts
+    ORDER BY ts DESC, rowid DESC LIMIT ?`).all(limit) as
+    Array<{ tx: string; ts: number; kind: string; asset: string; address: string; amount_wei: string; bps: number }>;
+  const paidTotals = db.prepare(`
+    SELECT count(*) c, max(ts) last,
+           coalesce(sum(CASE WHEN kind = 'nodes'   THEN CAST(amount_wei AS REAL) END), 0) nodes,
+           coalesce(sum(CASE WHEN kind = 'buyback' THEN CAST(amount_wei AS REAL) END), 0) buyback,
+           coalesce(sum(CASE WHEN kind = 'team'    THEN CAST(amount_wei AS REAL) END), 0) team
+    FROM payouts`).get() as { c: number; last: number | null; nodes: number; buyback: number; team: number };
+
   const seen = events.map((e) => e.ts).filter((t) => t > 0);
 
   // The pool half of the same fee, already indexed for the coin page.
@@ -283,12 +317,26 @@ export function feeLedger(db: DB, limit = 25): FeeLedger {
     recipient,
     recipientUrl: recipient ? EXPLORER.address(recipient) : null,
     splitter,
-    live: Boolean(splitter && recipient && splitter.address === recipient),
+    mode: splitter && recipient && splitter.address === recipient
+      ? "contract"
+      : paidTotals.c > 0 ? "wallet" : "none",
     credited: { wei: creditedWei.toString(), eth: toEth(creditedWei), count: credited.length },
     claimed: { wei: claimedWei.toString(), eth: toEth(claimedWei), count: claimed.length },
     unclaimed: {
       wei: (creditedWei - claimedWei).toString(),
       eth: toEth(creditedWei > claimedWei ? creditedWei - claimedWei : 0n),
+    },
+    payouts: {
+      count: paidTotals.c,
+      nodesEth: paidTotals.nodes / 1e18,
+      buybackEth: paidTotals.buyback / 1e18,
+      teamEth: paidTotals.team / 1e18,
+      lastTs: paidTotals.last,
+      recent: paid.map((p) => ({
+        tx: p.tx, url: EXPLORER.tx(p.tx), ts: p.ts, kind: p.kind, address: p.address,
+        addressUrl: EXPLORER.address(p.address), asset: p.asset,
+        amountEth: Number(BigInt(p.amount_wei)) / 1e18, bps: p.bps,
+      })),
     },
     income: {
       curveEth: toEth(creditedWei),

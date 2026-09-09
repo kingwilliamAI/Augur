@@ -719,7 +719,8 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <p><b>Live.</b> <code>/follow 0x…</code> in the bot takes the creator address off any card. When that wallet launches again the alert goes out as soon as the watcher sees the block, whatever the launch scores, with the wallet’s record beside it: how many launches, how many reached the pool, their best peak, and the base rate to read it against. A wallet is matched on both names a launch can carry, the sender and the deployer the event names, which is what makes an address copied off a card work here. Three wallets free, twenty-five holding , a hundred at tier 2; <code>/following</code> lists them and <code>/unfollow</code> stops one.</p>
 
         <h2><span class="n">03</span>Where the fee goes, live</h2>
-        <p><b>Half live.</b> Today the creator fee still lands in a wallet, and the <a href="#/fees">fees page</a> now reads that wallet’s ledger off the chain: what the curve paid into the pons escrow, what the pool hook has swept, what has been claimed. The contract that will split it is written and in the repository as <code>contracts/FeeSplitter.sol</code>: three destinations, shares fixed at deployment, no owner, no setter, no sweep. What is left is deploying it and pointing the launch’s fee recipient at it, which is one transaction and visible to anybody. The page reports which of those two states it is in rather than describing the finished one, and every payout appears there with its transaction the moment the contract is live.</p>
+        <p><b>Live in software.</b> The <a href="#/fees">fees page</a> reads the wallet’s ledger off the chain: what the curve paid into the pons escrow, what the pool hook swept, what has been claimed. <code>npm run payout</code> then splits what arrived between three wallets, the nodes, the buyback and the team, in shares set in the configuration, and writes every transfer to that page with its transaction. It holds back a gas reserve, refuses to run below a floor, prints its plan and does nothing without <code>--send</code>. It is the one command in this project that signs anything, it belongs to whoever operates the board, and no clone, board or bot has a path to it.</p>
+        <p><b>Not yet a guarantee.</b> A command somebody runs is a habit, not a rule, and the page says so on every line it paid. <code>contracts/FeeSplitter.sol</code> is the version that removes the habit: a contract in the wallet’s place, dividing each payout as it is released, shares fixed at deployment, no owner, no setter, no pause, no sweep. It is written and not deployed; deploying it and pointing the launch’s fee recipient at it is one transaction, visible to anybody.</p>
 
         <h2><span class="n">04</span>Creator tools</h2>
         <p>Twelve thousand wallets launched something on pons in a single day this month. Before deploying, paste the parameters and get the score and its three reasons. After, an alert saying where the launch ranked against everything else that hour.</p>
@@ -737,7 +738,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <h2><span class="n red">07</span>Never</h2>
         <div class="never">
           <div><i>x</i><span>Never asks for a private key, a seed phrase or an approval.</span></div>
-          <div><i>x</i><span>Never holds funds, never trades, never touches a wallet.</span></div>
+          <div><i>x</i><span>Never holds your funds, never trades, never touches your wallet. The one command that signs is the operator’s own, for splitting the fee wallet, and nothing a reader runs can reach it.</span></div>
           <div><i>x</i><span>Never sends your data anywhere. The local board talks to a public RPC and nothing else.</span></div>
           <div><i>x</i><span>Never presents a score as a safety rating, a price forecast, or advice.</span></div>
           <div><i>x</i><span>Never quietly drops a validation result for being unflattering.</span></div>
@@ -993,7 +994,8 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
       <div class="prose">
         <h2><span class="n">&middot;</span>The arrangement</h2>
         <p>Every trade on a pons curve pays a fee, and every swap in the pool afterwards pays one as well. Both go to the one address the launch named when it was created. For $AUGUR that address collects the only revenue this project has, and it is what keeps the board, the bot and the model free.</p>
-        <p>The plan is that the address stops being a wallet. A contract in its place divides every payout three ways the moment it is released: what the node and the nightly retrain cost, a share paid out to holders, and a share spent buying $AUGUR back. The shares are fixed when the contract is deployed, and it has no owner, no setter, no pause and no sweep, so the arrangement can be read off the chain rather than taken on trust. It is <code>contracts/FeeSplitter.sol</code> in the repository, and the numbers below come from the contract itself, not from this page.</p>
+        <p>It is split three ways: what the nodes and the nightly retrain cost, a share spent buying $AUGUR back, and a share to the people who build it. There are two ways to carry that out and the repository has both. <code>npm run payout</code> is the one running today: a command on the machine that holds the fee wallet reads the balance, holds back a gas reserve, and sends the three shares on, writing each transfer here once it is mined. It is honest about what it is, which is a habit with a ledger rather than a guarantee.</p>
+        <p>The other is <code>contracts/FeeSplitter.sol</code>, a contract that takes the wallet's place as the fee recipient and divides every payout the moment it is released. Its shares are fixed at deployment and it has no owner, no setter, no pause and no sweep, so the split stops being something anybody has to be trusted with. It is written and not deployed. This page names which of the two paid each line below, because the difference is the only part a reader is being asked to weigh.</p>
         <div class="flow2" id="fee-flow"></div>
 
         <h2><span class="n">&middot;</span>Every payout</h2>
@@ -1006,12 +1008,10 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <div class="row2"><b>In the pool</b><span id="fee-pool">&mdash;</span></div>
         <div class="row2"><b>Not yet claimed</b><span id="fee-unclaimed">&mdash;</span></div>
         <h3 style="margin-top:22px">Where it went</h3>
-        <div class="row2"><b>Server</b><span id="fee-server">&mdash;</span></div>
-        <div class="row2"><b>Holders</b><span id="fee-holders">&mdash;</span></div>
-        <div class="row2"><b>Buyback</b><span id="fee-buyback">&mdash;</span></div>
+        <div id="fee-went"></div>
         <h3 style="margin-top:22px">Addresses</h3>
         <div class="row2"><b>Paid to</b><span id="fee-recipient">&mdash;</span></div>
-        <div class="row2"><b>Splitter</b><span id="fee-splitter">&mdash;</span></div>
+        <div class="row2"><b>Split by</b><span id="fee-splitter">&mdash;</span></div>
       </div>
     </div>
   </div>
@@ -1348,7 +1348,8 @@ const ROAD = [
   { tag: "shipped", cls: "done", title: "Holder tiers", d: "the bot and the API, opened by the balance" },
   { tag: "shipped", cls: "done", title: "Follow a deployer", d: "their next launch, as soon as the block is seen" },
   { tag: "shipped", cls: "done", title: "Who is buying", d: "a wallet with a record enters a launch you hold" },
-  { tag: "then", cls: "next", title: "Fee route, live", d: "the ledger reads; the contract that splits it is written, not deployed" },
+  { tag: "shipped", cls: "done", title: "The fee, split", d: "three wallets, every transfer on the page with its transaction" },
+  { tag: "then", cls: "next", title: "Split by contract", d: "the same three ways, with nobody to trust: written, not deployed" },
 ];
 
 const SHIPPED = [
@@ -1365,7 +1366,8 @@ const SHIPPED = [
   { t: "Follow a deployer", w: "Sep", ok: true },
   { t: "Trader alerts on a watched launch", w: "Sep", ok: true },
   { t: "Fee ledger, read from the chain", w: "Sep", ok: true },
-  { t: "Fee splitter, deployed", w: "not yet", ok: false },
+  { t: "Fee split three ways, in software", w: "Sep", ok: true },
+  { t: "Fee splitter contract, deployed", w: "not yet", ok: false },
 ];
 
 function drawRoadmap() {
@@ -2160,17 +2162,25 @@ async function loadFees() {
   const pct = (bps) => (bps / 100).toFixed(bps % 100 === 0 ? 0 : 1) + "%";
   const s = d.splitter;
 
-  $("fee-state").innerHTML = d.live && s
-    ? "<b>In force.</b> Every payout is divided by the contract at <code>" + esc(s.address) + "</code>: server "
+  $("fee-state").innerHTML = d.mode === "contract" && s
+    ? "<b>Split by contract.</b> Every payout is divided at <code>" + esc(s.address) + "</code>: server "
       + pct(s.serverBps) + ", holders " + pct(s.holdersBps) + ", buyback " + pct(s.buybackBps)
       + ". Those shares are immutable, and each payout below carries the transaction it left in."
-    : s
-      ? "<b>Deployed, not yet in force.</b> The splitter is at <code>" + esc(s.address)
-        + "</code> and the launch still pays <code>" + esc(d.recipient || "—")
-        + "</code>. Pointing the launch at it is one transaction; until that happens this page reports the wallet."
-      : "<b>Not deployed yet.</b> The fee lands on <code>" + esc(d.recipient || "not read here yet")
-        + "</code>, which is a wallet. The contract that will split it is in the repository and has not been "
-        + "deployed. When it is, its address and its three shares appear here and every payout is listed below.";
+    : d.mode === "wallet"
+      ? "<b>Split by the wallet.</b> The fee arrives at <code>" + esc(d.recipient || "the fee wallet")
+        + "</code> and is sent on to the three wallets below by <code>npm run payout</code>, which is a "
+        + "command somebody runs rather than a rule the chain enforces. Every transfer it has made is "
+        + "listed here with its transaction. The contract that would make it a rule is written and not "
+        + "deployed."
+      : s
+        ? "<b>Deployed, not yet in force.</b> The splitter is at <code>" + esc(s.address)
+          + "</code> and the launch still pays <code>" + esc(d.recipient || "—")
+          + "</code>. Pointing the launch at it is one transaction; until then this page reports the wallet."
+        : "<b>Not split yet.</b> The fee lands on <code>" + esc(d.recipient || "not read here yet")
+          + "</code>, which is a wallet, and nothing has been sent on from it. Two ways out of that state "
+          + "are in the repository: <code>npm run payout</code>, which splits the wallet three ways and "
+          + "records every transfer here, and <code>contracts/FeeSplitter.sol</code>, which does the same "
+          + "without anybody having to run it.";
 
   const step = (n, b, sp, v) => '<div class="s"><span class="n">' + n + "</span><b>" + b + "</b><em>" + sp + '</em><span class="val">' + v + "</span></div>";
   const sym = d.income.quoteSymbol && d.income.quoteSymbol !== "?" ? d.income.quoteSymbol : "";
@@ -2178,16 +2188,26 @@ async function loadFees() {
     step("01", "trade", "every buy and sell, on the curve and in the pool", "the creator fee") +
     step("02", "pons", "the escrow on the curve, the hook in the pool", d.income.sweeps ? d.income.sweeps.toLocaleString() + " sweeps" : "nothing read yet") +
     step("03", "recipient", "named at launch, public, unchangeable by us", d.recipient ? esc(short(d.recipient)) : "not read yet") +
-    step("04", "split", "three ways, fixed when the contract was deployed",
-      s ? pct(s.serverBps) + " / " + pct(s.holdersBps) + " / " + pct(s.buybackBps) : "not deployed");
+    step("04", "split",
+      d.mode === "wallet" ? "three wallets, sent on by the operator's own command"
+        : "three ways, fixed when the contract was deployed",
+      d.mode === "contract" && s ? pct(s.serverBps) + " / " + pct(s.holdersBps) + " / " + pct(s.buybackBps)
+        : d.mode === "wallet" ? d.payouts.count.toLocaleString() + " transfers"
+          : "not running yet");
 
   const when = (ts) => ts ? new Date(ts * 1000).toISOString().slice(5, 16).replace("-", "/").replace("T", " · ") : "—";
-  $("fee-ledger").innerHTML = d.splits.recent.length
-    ? d.splits.recent.map((p) => '<div class="r"><span class="w">' + when(p.ts)
-        + '</span><span class="d"><a href="' + esc(p.url) + '" target="_blank" rel="noopener">split &#8599;</a> &middot; server '
-        + eth(p.serverEth) + " &middot; holders " + eth(p.holdersEth) + " &middot; buyback " + eth(p.buybackEth)
-        + '</span><span class="a">' + eth(p.totalEth) + "</span></div>").join("")
-    : '<div class="r"><span class="w">—</span><span class="d">no payouts yet</span><span class="a"></span></div>';
+  // One line per transfer for the wallet split, one per release for the contract. Both carry the
+  // transaction, which is the only part a reader can check without taking this page's word for it.
+  const walletRows = d.payouts.recent.map((p) => '<div class="r"><span class="w">' + when(p.ts)
+    + '</span><span class="d"><a href="' + esc(p.url) + '" target="_blank" rel="noopener">'
+    + esc(p.kind) + " &#8599;</a> &middot; " + esc(short(p.address)) + " &middot; " + pct(p.bps)
+    + '</span><span class="a">' + eth(p.amountEth) + "</span></div>").join("");
+  const contractRows = d.splits.recent.map((p) => '<div class="r"><span class="w">' + when(p.ts)
+    + '</span><span class="d"><a href="' + esc(p.url) + '" target="_blank" rel="noopener">split &#8599;</a> &middot; server '
+    + eth(p.serverEth) + " &middot; holders " + eth(p.holdersEth) + " &middot; buyback " + eth(p.buybackEth)
+    + '</span><span class="a">' + eth(p.totalEth) + "</span></div>").join("");
+  $("fee-ledger").innerHTML = contractRows + walletRows
+    || '<div class="r"><span class="w">—</span><span class="d">no payouts yet</span><span class="a"></span></div>';
 
   $("fee-note").textContent = "Read from the chain by npm run fees"
     + (d.lastReadBlock ? ", last at block " + d.lastReadBlock.toLocaleString() : "")
@@ -2199,11 +2219,18 @@ async function loadFees() {
     ? d.income.poolQuote.toFixed(4) + (sym ? " " + sym : "") + (d.income.poolUsd ? " · " + usd(d.income.poolUsd) : "")
     : "—";
   $("fee-unclaimed").textContent = eth(d.unclaimed.eth);
-  $("fee-server").textContent = d.splits.count ? eth(d.splits.serverEth) : "—";
-  $("fee-holders").textContent = d.splits.count ? eth(d.splits.holdersEth) : "—";
-  $("fee-buyback").textContent = d.splits.count ? eth(d.splits.buybackEth) : "—";
+  // The three rows are named after whichever thing actually paid, because "server" and "nodes" are
+  // two different arrangements and a fixed label would describe the one that is not running.
+  const went = d.payouts.count
+    ? [["Nodes", d.payouts.nodesEth], ["Buyback", d.payouts.buybackEth], ["Team", d.payouts.teamEth]]
+    : [["Server", d.splits.serverEth], ["Holders", d.splits.holdersEth], ["Buyback", d.splits.buybackEth]];
+  const paid = d.payouts.count || d.splits.count;
+  $("fee-went").innerHTML = went.map((r) => '<div class="row2"><b>' + r[0] + "</b><span>"
+    + (paid ? eth(r[1]) : "—") + "</span></div>").join("");
   $("fee-recipient").textContent = d.recipient ? short(d.recipient) : "—";
-  $("fee-splitter").textContent = s ? short(s.address) : "not deployed";
+  $("fee-splitter").textContent = d.mode === "contract" && s ? short(s.address)
+    : d.mode === "wallet" ? "npm run payout"
+      : s ? short(s.address) + ", not in force" : "nothing yet";
 }
 
 async function loadModel() {

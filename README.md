@@ -284,6 +284,7 @@ Nothing here needs a key, because nothing here signs.
 | `nightly` | backfill, enrich, retrain, in that order |
 | `telegram` | optional bot, the only part of this project that talks to a third party |
 | `fees` | where the curve fee went: escrow credits, claims, and every split the contract made |
+| `payout` | splits the fee wallet three ways. The only command here that signs, and it dry-runs by default |
 
 <br>
 
@@ -324,11 +325,21 @@ address the launch named. `npm run fees` reads that ledger off the chain: what t
 what has been claimed, what the pool hook swept. The hosted board serves it at `/api/fees` and
 draws it at [getaugur.xyz/#/fees](https://getaugur.xyz/#/fees).
 
-Today that address is a wallet. `contracts/FeeSplitter.sol` is the contract meant to replace it: it
-divides every payout three ways, between running the board, holders, and buying $AUGUR back, in
-shares fixed when it is deployed. It has no owner, no setter, no pause and no sweep, so the split can
-be read off the chain instead of taken on trust, and the page says which of the two states the
-arrangement is actually in rather than describing the finished one. Deploying it is in DEPLOY.md.
+It is split three ways: the nodes and the nightly retrain, buying $AUGUR back, and the people who
+build it. There are two ways to carry that out, and this repository has both.
+
+`npm run payout` is the one that works today. It reads the fee wallet's balance, holds back a gas
+reserve, refuses anything below a floor, and sends the three shares on, writing each transfer to the
+ledger once it is mined. It is the only command in this project that signs anything, which is why it
+is a command of its own: the shares ship at zero so it does nothing until somebody sets them, a run
+prints its plan and stops unless `--send` is passed, and the key it uses comes from `.env` on the
+operator's own machine. A clone never runs it, and neither the board nor the bot can reach it.
+
+`contracts/FeeSplitter.sol` is the version that needs nobody to run it: a contract that takes the
+wallet's place as the fee recipient and divides every payout as it is released, in shares fixed at
+deployment, with no owner, no setter, no pause and no sweep. It is written and not deployed, and
+DEPLOY.md section 10 has both paths. The page names which of the two paid each line, because a
+habit and a guarantee are not the same thing and the difference is the reader's to weigh.
 
 <br>
 
@@ -373,8 +384,11 @@ board and the bot around the clock.
 A wallet is proved by signing a sentence. It costs no gas, moves nothing, and hands over no key.
 `/link` in the bot opens a page on the hosted board that asks the wallet for one signature and posts
 it back; `/link 0x…` instead hands you the sentence to sign wherever you like and takes it back with
-`/verify 0x…`. `/unlink` forgets the wallet, the tier and the key together. There is no command and
-no page anywhere in this project that asks for a private key, a seed, an approval, or a transaction.
+`/verify 0x…`. `/unlink` forgets the wallet, the tier and the key together. Nothing a reader can run
+asks for a private key, a seed, an approval, or a transaction, and nothing on this site or in the bot
+has a path to one. The single exception is `npm run payout`, which is the operator's own command for
+splitting the fee wallet and is described below: it signs with a key only the operator has, in a
+process nobody else starts, and no part of the scanner, the board or the bot can reach it.
 
 The connect button on the hosted site is the one place any of this touches a wallet, and it does two
 things: reads the address, and asks for that one signature. A reader who never wants to connect
