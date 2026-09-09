@@ -29,7 +29,16 @@ const SEC_PER_BLOCK = 86400 / BLOCKS_PER_DAY;
  * Small on purpose and cleared wholesale: entries are keyed on a build of the matrix that has
  * already been replaced, so once it turns over none of them can be hit again.
  */
-const feedCache = new Map<string, string>();
+const feedCache = new Map<string, { body: string; at: number; version: string }>();
+/**
+ * How long a held answer outlives the rows it was made from.
+ *
+ * Keying on the matrix build alone was right but never hit: the watcher advances the cursor every
+ * few seconds, so on a live chain every reader missed and paid the two thirds of a second again.
+ * At a hundred readers that is the whole machine. The board already prints how far behind it is,
+ * and this window is shorter than one poll, so nobody sees a number they could not have seen anyway.
+ */
+const FEED_GRACE_MS = 4_000;
 /**
  * The finished bytes, not the object they came from.
  *
@@ -37,10 +46,10 @@ const feedCache = new Map<string, string>();
  * paid once here, it would otherwise be paid again for every reader who receives the identical
  * body.
  */
-function holdFeed(key: string, value: unknown): string {
+function holdFeed(key: string, version: string, value: unknown): string {
   const body = JSON.stringify(value);
   if (feedCache.size > 64) feedCache.clear();
-  feedCache.set(key, body);
+  feedCache.set(key, { body, at: Date.now(), version });
   return body;
 }
 
@@ -660,10 +669,14 @@ const server = createServer(async (req, res) => {
      * build of the matrix, so a held answer is only ever served while the rows behind it are the
      * rows it was made from; the moment the cursor advances, the key changes with it.
      */
-    const feedKey = `${datasetVersion()}:${modelId()}:${url.searchParams.get("hours") ?? 6}:` +
+    const feedKey = `${url.searchParams.get("hours") ?? 6}:` +
       `${url.searchParams.get("sort") ?? "score"}:${url.searchParams.get("min") ?? 0}`;
+    const feedVersion = `${datasetVersion()}:${modelId()}`;
     const held = feedCache.get(feedKey);
-    if (held) { sendJson(res, held); return; }
+    if (held && (held.version === feedVersion || Date.now() - held.at < FEED_GRACE_MS)) {
+      sendJson(res, held.body);
+      return;
+    }
     const hours = Number(url.searchParams.get("hours") ?? 6);
     const order: FeedOrder = url.searchParams.get("sort") === "new" ? "new" : "score";
     // The reader's floor, as a probability. Clamped rather than trusted: a threshold at or above 1
@@ -745,7 +758,7 @@ const server = createServer(async (req, res) => {
       counts,
       items: rows.map((r) => ({ ...r, meta: byToken.get(r.token) ?? null })),
     };
-    sendJson(res, holdFeed(feedKey, payload));
+    sendJson(res, holdFeed(feedKey, feedVersion, payload));
     return;
   }
 

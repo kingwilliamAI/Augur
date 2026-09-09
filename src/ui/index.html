@@ -1854,7 +1854,7 @@ $("copy-all").onclick = () => copyWithFeedback($("copy-all"), allCommands(), "Co
 
 /* ── ages tick without a refetch ── */
 setInterval(() => document.querySelectorAll("[data-ts]").forEach((el) => { const t = Number(el.dataset.ts); if (t) el.textContent = ago(t); }), 1000);
-setInterval(loadFeed, 5000);
+setInterval(loadFeed, 15000);
 route();
 </script>
 </body>
