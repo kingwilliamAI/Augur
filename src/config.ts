@@ -62,6 +62,34 @@ export const CFG = {
    * limiting counts the whole internet as one client.
    */
   boardHost: str("BOARD_HOST", "0.0.0.0"),
+  /**
+   * What holding $AUGUR opens, in whole tokens.
+   *
+   * Zero on both means the paid half is off and every reader is treated as a holder, which is how
+   * this ships before a supply is known: the machinery runs on real people without a number nobody
+   * can justify yet being printed on the site as if it were decided.
+   */
+  tier1Tokens: num("TIER1_TOKENS", 0),
+  tier2Tokens: num("TIER2_TOKENS", 0),
+  /**
+   * What a reader without the token gets. The delay is the whole difference on an alert: half of
+   * all graduations happen inside two minutes, so a minute is long enough to matter and short
+   * enough that the free bot is still worth having.
+   */
+  freeDelaySec: num("FREE_DELAY_SEC", 60),
+  /** Free alerts also stop at a floor, so the free bot cannot be turned into the paid one by /watch 0. */
+  freeMinScore: num("FREE_MIN_SCORE", 10),
+  /** A tier lost by selling comes back this long after the balance does. */
+  tierCooldownSec: num("TIER_COOLDOWN_SEC", 7 * 86400),
+  /** How often the bot re-reads the balances of linked wallets. */
+  tierRecheckSec: num("TIER_RECHECK_SEC", 3600),
+  /**
+   * Where the hosted board answers, for the link the bot hands out.
+   *
+   * The bot and the board are separate processes and the bot has no way to know what hostname the
+   * board is reachable under, so it is told. A local run points at localhost and works the same.
+   */
+  siteUrl: str("SITE_URL", "https://getaugur.xyz").replace(/\/+$/, ""),
 } as const;
 
 /**

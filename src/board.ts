@@ -10,6 +10,7 @@ import { grade, modelId, pending, score as scoreLog, settled } from "./track.ts"
 import { normaliseName } from "./features.ts";
 import { formatUnits, quoteFromCache } from "./quote.ts";
 import { formatUsd, marketCapUsd, usdOf } from "./prices.ts";
+import { claimChallenge, keyHolder, tierCounts, tiersConfigured, verifyByToken } from "./tiers.ts";
 import { BLOCKS_PER_DAY } from "./config.ts";
 import { CFG } from "./config.ts";
 import { indexCurve } from "./curve.ts";
@@ -133,14 +134,43 @@ function health(): Record<string, unknown> {
  * a scraper and leaves a person alone.
  */
 const RATE_LIMIT = Number(process.env.RATE_LIMIT ?? 240);
+/** What a proved holder gets instead, counted against the key rather than the address it came from. */
+const RATE_LIMIT_KEYED = Number(process.env.RATE_LIMIT_KEYED ?? 2000);
 const RATE_WINDOW_MS = 60_000;
 const hits = new Map<string, { n: number; until: number }>();
 /** Only believe a forwarded address when this instance is knowingly behind a proxy. */
 const TRUST_PROXY = process.env.TRUST_PROXY === "1";
 
-function overLimit(req: import("node:http").IncomingMessage): boolean {
-  const fwd = TRUST_PROXY ? String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() : "";
-  const who = fwd || req.socket.remoteAddress || "unknown";
+/**
+ * The key on a request, from a header or the query string.
+ *
+ * The header is the one to use. The query string is accepted because a browser address bar and a
+ * curl one-liner cannot set headers, and refusing it would make the export unusable from the two
+ * places somebody first tries it; the cost is that the key can end up in a proxy log, which is why
+ * the reply to /key says to treat it as a password and offers to reissue.
+ */
+function keyOn(req: import("node:http").IncomingMessage, url: URL): string | null {
+  const header = req.headers["x-api-key"];
+  const raw = (Array.isArray(header) ? header[0] : header) ?? url.searchParams.get("key") ?? "";
+  const key = String(raw).trim();
+  return /^augur_[0-9a-f]{32}$/.test(key) ? key : null;
+}
+
+/**
+ * Rate limiting, per key where there is one and per address otherwise.
+ *
+ * Counting a key against its own bucket is the whole point of having one: a holder behind the same
+ * carrier NAT as a thousand other readers should not share their limit, and a holder running a
+ * script should not exhaust the limit of everyone on their office address.
+ */
+function overLimit(req: import("node:http").IncomingMessage, url: URL): boolean {
+  const key = keyOn(req, url);
+  const holder = key ? keyHolder(db, key, Math.floor(Date.now() / 1000)) : null;
+  const who = holder ? `key:${key}` : (
+    (TRUST_PROXY ? String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim() : "")
+    || req.socket.remoteAddress || "unknown"
+  );
+  const limit = holder && holder.tier >= 1 ? RATE_LIMIT_KEYED : RATE_LIMIT;
   const now = Date.now();
   const seen = hits.get(who);
   if (!seen || now > seen.until) {
@@ -149,7 +179,7 @@ function overLimit(req: import("node:http").IncomingMessage): boolean {
     return false;
   }
   seen.n++;
-  return seen.n > RATE_LIMIT;
+  return seen.n > limit;
 }
 
 /**
@@ -299,6 +329,8 @@ function stats(): Record<string, unknown> {
     enriched: c.enriched,
     decileLift: validation?.decile?.mean ?? null,
     validatedAt: validation?.at ?? null,
+    // The paid half, reported on the page it pays for rather than only in a database nobody reads.
+    tiers: { configured: tiersConfigured(), ...tierCounts(db) },
   };
   statsCache = { at: Date.now(), body };
   return body;
@@ -421,11 +453,103 @@ function coverage(): { launches: number; named: number; since: number | null } {
   return r;
 }
 
+/**
+ * A small JSON body, or null.
+ *
+ * Capped hard because these two endpoints take a token and a signature and nothing else: a few
+ * hundred bytes is the whole legitimate range, and an unbounded reader on a public server is a way
+ * to be handed a gigabyte. Reading is abandoned rather than trimmed, so a truncated body can never
+ * be parsed into something that looks valid.
+ */
+async function readJson(req: import("node:http").IncomingMessage): Promise<Record<string, unknown> | null> {
+  const MAX = 4096;
+  let size = 0;
+  const chunks: Buffer[] = [];
+  try {
+    for await (const chunk of req) {
+      size += (chunk as Buffer).length;
+      if (size > MAX) return null;
+      chunks.push(chunk as Buffer);
+    }
+    const parsed = JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed as Record<string, unknown> : null;
+  } catch {
+    return null;
+  }
+}
+
 const server = createServer(async (req, res) => {
   const url = new URL(req.url ?? "/", `http://localhost:${CFG.boardPort}`);
 
-  if (url.pathname.startsWith("/api/") && overLimit(req)) {
-    json(res, { error: "rate limited", limit: `${RATE_LIMIT}/min` }, 429);
+  if (url.pathname.startsWith("/api/") && overLimit(req, url)) {
+    json(res, { error: "rate limited", limit: `${RATE_LIMIT}/min`, withKey: `${RATE_LIMIT_KEYED}/min` }, 429);
+    return;
+  }
+
+  /**
+   * History, for a reader who proved a wallet that is holding.
+   *
+   * Claims rather than launches, because a claim is the part that cannot be rebuilt from the chain:
+   * anyone can re-read what launched, and nobody can re-read what this machine thought about it
+   * before the outcome existed. That is the thing worth exporting, and the thing worth paying for.
+   *
+   * Bounded by a window rather than by a page cursor. An export is a file somebody wants once, and a
+   * cursor would turn it into a loop that has to be got right by every caller.
+   */
+  if (url.pathname === "/api/export") {
+    const key = keyOn(req, url);
+    const holder = key ? keyHolder(db, key, Math.floor(Date.now() / 1000)) : null;
+    if (!holder) {
+      json(res, { error: "an API key is needed here", how: "@AugurRHbot, /link then /key" }, 401);
+      return;
+    }
+    if (holder.tier < 1) {
+      json(res, { error: "the linked wallet is not holding", tier: holder.tier }, 403);
+      return;
+    }
+    const maxDays = holder.tier >= 2 ? 30 : 7;
+    const asked = Number(url.searchParams.get("days") ?? maxDays);
+    const days = Math.min(Math.max(Number.isFinite(asked) ? asked : maxDays, 1), maxDays);
+    const since = Math.floor(Date.now() / 1000) - days * 86400;
+    const rows = db.prepare(`
+      SELECT p.token, l.symbol, l.name, p.launch_ts, p.scored_at, p.probability, p.raw_probability,
+             p.rank, p.of, p.model_id, p.label, p.graded_at, (g.token IS NOT NULL) graduated
+      FROM predictions p
+      JOIN launches l ON l.token = p.token
+      LEFT JOIN graduations g ON g.token = p.token
+      WHERE p.launch_ts >= ? ORDER BY p.launch_ts DESC`).all(since);
+    json(res, { days, since, tier: holder.tier, count: rows.length, claims: rows });
+    return;
+  }
+
+  /**
+   * The two halves of proving a wallet from the website.
+   *
+   * The bot cannot ask a browser for a signature and a browser cannot speak in a chat, so the
+   * challenge token in the URL is what joins them: the bot mints it, the page spends it, and the
+   * bot notices the result in the database it already shares with the board. Nothing here is
+   * reachable without that token, and it dies in ten minutes.
+   *
+   * What the page can do with a stolen token is prove its own wallet into somebody else's chat,
+   * which gives that chat a tier at the thief's expense. It cannot read anything, cannot move
+   * anything, and cannot take a tier away from the wallet already there.
+   */
+  if (url.pathname === "/api/link/claim" || url.pathname === "/api/link/verify") {
+    if (req.method !== "POST") { json(res, { error: "post only" }, 405); return; }
+    const body = await readJson(req);
+    if (!body) { json(res, { error: "expected a small JSON body" }, 400); return; }
+    const token = String(body.token ?? "");
+    if (!/^[0-9a-f]{32}$/.test(token)) { json(res, { error: "no-challenge" }, 400); return; }
+    const now = Math.floor(Date.now() / 1000);
+
+    if (url.pathname === "/api/link/claim") {
+      const r = claimChallenge(db, token, String(body.address ?? ""), now);
+      json(res, r.ok ? { sentence: r.sentence, address: r.address } : { error: r.reason }, r.ok ? 200 : 400);
+      return;
+    }
+    const r = await verifyByToken(db, token, String(body.signature ?? ""), now);
+    json(res, r.ok ? { ok: true, address: r.address } : { error: r.reason }, r.ok ? 200 : 400);
     return;
   }
 
@@ -511,7 +635,7 @@ const server = createServer(async (req, res) => {
     return;
   }
 
-  if (url.pathname === "/") {
+  if (url.pathname === "/" || url.pathname === "/link") {
     const html = readFileSync(join(here, "ui", "index.html"));
     // Re-read per request so an edit shows up on reload — which only works if the browser is told
     // not to keep its own copy. With no cache header at all it caches heuristically and serves a

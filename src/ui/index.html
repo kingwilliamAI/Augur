@@ -73,6 +73,19 @@ button{font-family:inherit;border:0;background:none;color:inherit;cursor:pointer
 .links a.on{color:var(--ink);border-bottom-color:var(--lime)}
 .spacer{flex:1}
 .live{display:flex;align-items:center;gap:8px;font:500 11px var(--mono);color:var(--t55);white-space:nowrap}
+.wbtn{font-size:12px;padding:7px 12px}
+.wbtn.on{border-color:rgba(204,255,0,.45);color:var(--lime)}
+.lk{max-width:620px;margin:0 auto;padding:56px 0 96px}
+.lk .step{border:1px solid var(--l08);border-radius:10px;background:var(--bg2);padding:18px 20px;margin-top:14px}
+.lk .step.off{opacity:.45}
+.lk .step h3{font:500 15px Geist,sans-serif;color:var(--ink);margin:0 0 6px;display:flex;align-items:center;gap:10px}
+.lk .step h3 .n{font:500 11px var(--mono);color:var(--lime)}
+.lk .step p{margin:0;font-size:13.5px;color:var(--t65);line-height:1.6}
+.lk pre{margin:12px 0 0;padding:12px 14px;border:1px solid var(--l08);border-radius:8px;background:var(--bg);font:12px/1.65 var(--mono);color:var(--t78);white-space:pre-wrap;overflow-wrap:anywhere}
+.lk .act{margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.lk .msg{font:12px var(--mono);color:var(--t55)}
+.lk .msg.bad{color:#ff6b6b}
+.lk .msg.good{color:var(--lime)}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:ps-pulse 1.6s infinite;flex:none}
 .live.warn .dot{background:var(--amber);animation:none}.live.bad .dot{background:var(--red);animation:none}
 .btn{padding:9px 16px;border-radius:6px;background:var(--lime);color:#111;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1;border:1px solid var(--lime)}
@@ -94,6 +107,8 @@ button{font-family:inherit;border:0;background:none;color:inherit;cursor:pointer
   .brand b{font-size:17px}
 }
 .btn:focus-visible{outline:2px solid var(--lime2);outline-offset:2px}
+.btn:disabled{background:var(--bg2);border-color:var(--l12);color:var(--t45);cursor:default}
+.btn:disabled:hover{background:var(--bg2);border-color:var(--l12);color:var(--t45)}
 .btn.ghost{background:transparent;border-color:rgba(255,255,255,.2);color:var(--ink);font-weight:500;font-family:var(--mono)}
 .btn.ghost:hover{background:var(--l07);border-color:rgba(204,255,0,.4);color:var(--ink)}
 /**
@@ -598,6 +613,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
   </div>
   <div class="spacer"></div>
   <div class="live" id="livepill"><span class="dot"></span><span id="livetxt">connecting…</span></div>
+  <button class="btn ghost wbtn" id="wbtn" hidden>Connect</button>
   <a class="btn" href="#/board">Open board</a>
 </nav>
 
@@ -696,7 +712,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <p>The newest of those is search: the board only ever showed the last six hours, and now the box above the list takes a ticker, a token address or a wallet and opens the card behind any of them, however old. Here is what gets built next, in order, with no dates. Anything marked <b>then</b> above does not exist. If a page on this site ever describes something as working when it is not, that is a bug worth reporting.</p>
 
         <h2><span class="n">01</span>Holder tiers</h2>
-        <p>Holding $AUGUR opens up the hosted half. Free stays what it is today: alerts arrive a minute after the score is written, API reads are limited per address. A holder links a wallet by signing a plain sentence in the bot, which costs no gas and hands over no key, and gets the alert the second the score is written, at any threshold, plus an API key and history exports. Sell below the line and the tier drops; it comes back a week after the balance does. The thresholds are set when this ships and will be printed here.</p>
+        <p>Holding $AUGUR opens up the hosted half. Free stays what it is today: alerts arrive a minute after the score is written, API reads are limited per address. A holder proves a wallet by signing a plain sentence: <code>/link</code> in the bot opens a page here that asks the wallet for one signature, which costs no gas, moves nothing and hands over no key. Anyone who would rather not connect a wallet to a page can sign the same sentence anywhere and paste it back. Either way it opens the alert the second the score is written, at any threshold, plus an API key and history exports. Sell below the line and the tier drops; it comes back a week after the balance does. The thresholds are set when this ships and will be printed here.</p>
 
         <h2><span class="n">02</span>Follow a deployer</h2>
         <p><code>/follow</code> an address in the bot. When that creator launches again you hear about it in the first second, with their record beside it: how many launches, how many reached the pool, the best peak. The card already computes that record; this is the subscription to it.</p>
@@ -741,6 +757,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
           <div class="row2"><b>Base graduation rate</b><span id="rm-base">&mdash;</span></div>
           <div class="row2"><b>Top-decile lift</b><span id="rm-lift">&mdash;</span></div>
           <div class="row2"><b>Launches enriched</b><span id="rm-enr">&mdash;</span></div>
+          <div class="row2"><b>Wallets linked</b><span id="rm-linked">&mdash;</span></div>
         </div>
         <div class="side" id="rm-coin">
           <h3>$AUGUR</h3>
@@ -748,6 +765,46 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         </div>
       </div>
     </div>
+  </div>
+</section>
+
+<section id="page-link" hidden>
+  <div class="lk">
+    <h1>Prove a wallet</h1>
+    <div class="sub">A signature over a sentence. No gas, no approval, no key leaves your wallet.</div>
+
+    <div class="step" id="lk1">
+      <h3><span class="n">01</span>Connect</h3>
+      <p>Read-only. This page asks your wallet for its address and for one signature, and for nothing
+      else: there is no transaction to approve and no permission to grant. The network you are on
+      does not matter.</p>
+      <div class="act">
+        <button class="btn" id="lkconnect">Connect wallet</button>
+        <span class="msg" id="lkaddr"></span>
+      </div>
+    </div>
+
+    <div class="step off" id="lk2">
+      <h3><span class="n">02</span>Sign this sentence</h3>
+      <p>Read it before you sign. It names the wallet and the chat it belongs to, and it says in
+      words that it moves nothing. A signature is not a transaction: nothing reaches the chain.</p>
+      <pre id="lksentence">connect a wallet first</pre>
+      <div class="act">
+        <button class="btn" id="lksign" disabled>Sign</button>
+        <span class="msg" id="lkmsg"></span>
+      </div>
+    </div>
+
+    <div class="step off" id="lk3">
+      <h3><span class="n">03</span>Done</h3>
+      <p id="lkdone">The bot will say so in your chat.</p>
+      <div class="act"><a class="btn ghost" id="lkbot" href="https://t.me/AugurRHbot">Back to the bot</a></div>
+    </div>
+
+    <p style="margin-top:28px;font-size:12.5px;color:var(--t55);line-height:1.7">
+      Would rather not connect anything? Send <code>/link 0x…</code> to the bot instead and it will
+      give you the same sentence to sign wherever you like. Same protocol, same result.
+    </p>
   </div>
 </section>
 
@@ -833,7 +890,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <p>Open <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a> and send <code>/start</code>. <code>/watch 8</code> sets a floor, and every launch that clears it arrives with its score, its rank and its three reasons, seconds after the block. <code>/token 0x…</code> answers with the card, <code>/top</code> with the highest scoring launches right now, <code>/status</code> with whether the watcher is keeping up, <code>/stop</code> ends it and deletes your record. It is free to everyone today.</p>
         <p>The same bot runs on your own machine: <code>npm run telegram</code> with a token you create at @BotFather. Either way, what leaves is launch addresses and a number the board computed, both public. No key, no seed, nothing about a wallet. Our copy keeps one row per chat, the threshold and the chat id, and <code>/stop</code> removes it.</p>
         <h2><span class="n">&middot;</span>What comes next</h2>
-        <p>Holder tiers, in this bot. <code>/link</code> will answer with a plain sentence to sign; the signature proves the wallet and costs no gas. Holding $AUGUR then opens instant alerts at any threshold, <code>/follow</code> on deployers, an API key and history exports, and free alerts arrive a minute after the score is written. Thresholds are set when it ships and printed on the roadmap. A room that acts as the tape for $AUGUR buys is still planned, and still does not exist.</p>
+        <p>Holder tiers, in this bot. <code>/link</code> opens a page that asks your wallet for one signature, or hands you the sentence to sign elsewhere if you prefer; either way it costs no gas and moves nothing. Holding $AUGUR then opens instant alerts at any threshold, <code>/follow</code> on deployers, an API key and history exports, and free alerts arrive a minute after the score is written. Thresholds are set when it ships and printed on the roadmap. A room that acts as the tape for $AUGUR buys is still planned, and still does not exist.</p>
         <h2><span class="n red">&middot;</span>What the bot will never do</h2>
         <div class="never">
           <div><i>x</i><span>Never asks for a key, a seed phrase or an approval.</span></div>
@@ -863,7 +920,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
     <div class="notyet"><b>Tiers are not built yet.</b> The hosted board and the alert bot are live and free to everyone, and there is nothing to sign or unlock today. This page is here so the terms are visible before any of it exists.</div>
     <div class="cols2">
       <div class="prose">
-        <p>Holding $AUGUR will open the hosted half up. Free keeps the board, the bot and the card, with alerts arriving a minute after the score is written and API reads limited per address. A holder gets the alert the second it is written at any threshold, follows on deployers, an API key with a real limit, and history exports. Proving the holding is a signature over a plain sentence in the bot: no gas, no key, no approval, and the wallet can sit anywhere. Sell below the line and the tier drops; it comes back a week after the balance does.</p>
+        <p>Holding $AUGUR will open the hosted half up. Free keeps the board, the bot and the card, with alerts arriving a minute after the score is written and API reads limited per address. A holder gets the alert the second it is written at any threshold, follows on deployers, an API key with a real limit, and history exports. Proving the holding is one signature over a plain sentence: no gas, no key, no approval, no transaction, and the wallet can sit anywhere. Sell below the line and the tier drops; it comes back a week after the balance does.</p>
         <p>What is not for sale is a result. The backtest in the repository says that following the score does not pay, and nothing on this page claims otherwise. Pro is the server, the history and the speed, not an edge.</p>
         <h2><span class="n">&middot;</span>What stays free, always</h2>
         <p>Everything you are looking at. The board, the card behind every launch, the model and its validation, the prediction log. You run it yourself, it talks to a public RPC and nothing else, and the score you compute is the score the hosted site shows. That is the point of it being open, and Pro does not change it.</p>
@@ -978,7 +1035,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         </div>
         <div class="verify">
           <div class="hd"><h3>Verify before you buy</h3><button id="coin-copy">Copy</button></div>
-          <div style="margin-top:4px;font:12px Geist,sans-serif;color:var(--t55)">Match the address, not the name. Nothing on this site asks you to connect a wallet.</div>
+          <div style="margin-top:4px;font:12px Geist,sans-serif;color:var(--t55)">Match the address, not the name. Nothing here asks you to connect a wallet to read it, and nothing on this site ever asks for a transaction or an approval.</div>
           <div id="coin-verify"></div>
           <div class="note">Every other address carrying this name is not ours.</div>
         </div>
@@ -995,7 +1052,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
   <div class="wrap ftin">
     <div class="ftbrand">
       <div class="ftlogo"><img class="mark img" src="/icon-64.png" alt=""><b>augur</b></div>
-      <p>Scores every pons v2 launch on Robinhood Chain the second it lands. MIT, no wallet, no keys. Not a safety rating, not a price forecast, not advice.</p>
+      <p>Scores every pons v2 launch on Robinhood Chain the second it lands. MIT, no custody, no keys, no approvals. Not a safety rating, not a price forecast, not advice.</p>
     </div>
     <div class="ftcol">
       <h4>Product</h4>
@@ -1089,8 +1146,11 @@ const S = {
 function route() {
   const h = location.hash.replace(/^#\/?/, "");
   const [page, arg] = h.split("/");
-  S.page = ["board", "model", "token", "roadmap", "run", "telegram", "pro"].includes(page) ? page : "home";
-  for (const p of ["home", "board", "model", "token", "roadmap", "run", "telegram", "pro"]) $("page-" + p).hidden = S.page !== p;
+  const PAGES = ["board", "model", "token", "roadmap", "run", "telegram", "pro", "link"];
+  // The link page is reached by a path rather than a hash, because it arrives as a tapped link in a
+  // chat and a URL with a #/ in it looks like something went wrong with the message.
+  S.page = location.pathname === "/link" ? "link" : PAGES.includes(page) ? page : "home";
+  for (const p of ["home", ...PAGES]) $("page-" + p).hidden = S.page !== p;
   document.querySelectorAll("[data-nav]").forEach((a) => a.classList.toggle("on", a.dataset.nav === S.page));
   document.body.style.overflow = S.page === "board" ? "hidden" : "";
   $("ft").classList.toggle("off", S.page === "board");
@@ -1100,6 +1160,7 @@ function route() {
   if (S.page === "token") loadCoin();
   if (S.page === "home" || S.page === "roadmap") loadStats();
   if (S.page === "roadmap") layoutRoadmap();
+  if (S.page === "link") linkPage();
   loadFeed();
   window.scrollTo(0, 0);
 }
@@ -1318,6 +1379,12 @@ function renderRoadmap(s) {
   set("rm-base", s.baseRate === null || s.baseRate === undefined ? "\u2014" : (100 * s.baseRate).toFixed(2) + "%");
   set("rm-lift", s.decileLift ? s.decileLift.toFixed(2) + "x" : "not validated yet");
   set("rm-enr", s.enriched && s.total ? s.enriched.toLocaleString() + " of " + s.total.toLocaleString() : "\u2014");
+  // The paid half, counted on the page it pays for. "not gating yet" is the honest reading while the
+  // thresholds are unset: wallets can be linked, and nothing is being withheld from anyone.
+  const t = s.tiers;
+  set("rm-linked", !t ? "\u2014"
+    : !t.configured ? t.linked.toLocaleString() + ", not gating yet"
+    : t.linked.toLocaleString() + " \u00b7 " + (t.tier1 + t.tier2).toLocaleString() + " holding");
   const coin = $("rm-coin-b");
   if (coin) {
     coin.textContent = s.coin && s.coin.token
@@ -2031,6 +2098,138 @@ async function loadModel() {
       (v.atChance ? `but ${v.atChance} fold${v.atChance > 1 ? "s were" : " was"} no better than chance (worst ROC ${v.roc.worst.toFixed(3)}). ` : "and every fold beat chance. ") +
       `The live scoreboard on the right is the only number here written before its outcome existed. Run npm run validate after every retrain.`
     : "Run npm run validate to see how the model holds up across time-ordered folds.";
+}
+
+/* ── the wallet, in one place ──
+ *
+ * Two calls and no library: ask for the address, ask for one signature. There is nothing here that
+ * can build a transaction, request an approval, or read a key — not as a policy, but because the
+ * code to do it does not exist and a reader can check that in a minute.
+ *
+ * The button only appears for someone who already has a wallet in this browser. A reader who does
+ * not is never shown a connect prompt, because nothing on this site needs one to be read.
+ *
+ * Reconnection is silent: eth_accounts returns an already-authorised address without prompting, so
+ * a return visit knows who you are without asking again, and nothing is stored by us to do it.
+ */
+const W = {
+  addr: null,
+  subs: [],
+  get provider() { return window.ethereum ?? null; },
+  on(fn) { this.subs.push(fn); fn(this.addr); },
+  set(a) { this.addr = a || null; for (const fn of this.subs) fn(this.addr); },
+  async silent() {
+    if (!this.provider) return;
+    try { const a = await this.provider.request({ method: "eth_accounts" }); this.set(a && a[0] && a[0].toLowerCase()); } catch {}
+  },
+  async connect() {
+    if (!this.provider) throw new Error("no-wallet");
+    const a = await this.provider.request({ method: "eth_requestAccounts" });
+    this.set(a && a[0] && a[0].toLowerCase());
+    return this.addr;
+  },
+  sign(message) {
+    return this.provider.request({ method: "personal_sign", params: [message, this.addr] });
+  },
+};
+
+if (W.provider) {
+  $("wbtn").hidden = false;
+  W.on((a) => {
+    const b = $("wbtn");
+    b.textContent = a ? a.slice(0, 6) + "…" + a.slice(-4) : "Connect";
+    b.classList.toggle("on", Boolean(a));
+  });
+  $("wbtn").onclick = () => { if (!W.addr) W.connect().catch(() => {}); };
+  if (W.provider.on) W.provider.on("accountsChanged", (a) => W.set(a && a[0] && a[0].toLowerCase()));
+  W.silent();
+}
+
+/* ── proving a wallet ──
+ *
+ * The bot mints a token, this page spends it, and the bot reads the result out of the database it
+ * already shares with the board. The page never learns which chat it belongs to and never needs to.
+ */
+let linkDrawn = false;
+function linkPage() {
+  if (linkDrawn) return;
+  linkDrawn = true;
+
+  const token = new URLSearchParams(location.search).get("t") || "";
+  const step = (n, on) => $("lk" + n).classList.toggle("off", !on);
+  const say = (el, text, kind) => { const e = $(el); e.textContent = text; e.className = "msg" + (kind ? " " + kind : ""); };
+  const post = async (path, body) => {
+    const r = await fetch("/api/link/" + path, {
+      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+    });
+    return { ok: r.ok, body: await r.json().catch(() => ({})) };
+  };
+  const WHY = {
+    "no-challenge": "this link is not one the bot gave out. Send /link again.",
+    "expired": "this link has expired. Send /link to the bot for a fresh one.",
+    "bad-address": "that address does not look right.",
+    "bad-signature": "that signature could not be read.",
+    "wrong-wallet": "that signature came from a different wallet than the one connected.",
+    "taken": "that wallet is already linked to another chat.",
+    "no-wallet": "connect a wallet first.",
+  };
+
+  if (!token) {
+    say("lkaddr", "no link token. Send /link to @AugurRHbot and open the link it replies with.", "bad");
+    $("lkconnect").disabled = true;
+    return;
+  }
+  if (!W.provider) {
+    say("lkaddr", "no wallet found in this browser. Use /link 0x… in the bot instead.", "bad");
+    $("lkconnect").disabled = true;
+    return;
+  }
+
+  let sentence = null;
+
+  const claim = async (addr) => {
+    if (!addr) return;
+    say("lkaddr", addr, "good");
+    $("lkconnect").disabled = true;
+    $("lkconnect").textContent = "Connected";
+    const { ok, body } = await post("claim", { token, address: addr });
+    if (!ok) { say("lkmsg", WHY[body.error] || "could not start.", "bad"); return; }
+    sentence = body.sentence;
+    $("lksentence").textContent = sentence;
+    $("lksign").disabled = false;
+    step(2, true);
+  };
+
+  W.on((a) => { if (a) claim(a); });
+
+  $("lkconnect").onclick = async () => {
+    say("lkaddr", "waiting for the wallet…");
+    try { await W.connect(); } catch (e) { say("lkaddr", "the wallet refused or was closed.", "bad"); }
+  };
+
+  $("lksign").onclick = async () => {
+    if (!sentence) return;
+    $("lksign").disabled = true;
+    say("lkmsg", "waiting for the signature…");
+    let sig;
+    try {
+      sig = await W.sign(sentence);
+    } catch {
+      say("lkmsg", "signature cancelled. Nothing happened.", "bad");
+      $("lksign").disabled = false;
+      return;
+    }
+    const { ok, body } = await post("verify", { token, signature: sig });
+    if (!ok) {
+      say("lkmsg", WHY[body.error] || "that did not verify.", "bad");
+      $("lksign").disabled = false;
+      return;
+    }
+    say("lkmsg", "proved", "good");
+    step(3, true);
+    $("lkdone").textContent = "Wallet " + body.address.slice(0, 6) + "…" + body.address.slice(-4)
+      + " is proved. The bot has already said so in your chat.";
+  };
 }
 
 /* ── copy affordances on the install block ── */

@@ -219,6 +219,66 @@ CREATE TABLE IF NOT EXISTS tg_sent (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS tg_sent_at ON tg_sent(sent_at);
 
+-- The wallet a chat has proved it controls, and what its balance currently buys.
+--
+-- Proof is a signature over a sentence this table issued, which costs no gas and moves nothing; the
+-- bot never sees a key and never sends a transaction. Only the address survives the check, because
+-- the address is the only part a balance can be read against.
+--
+-- One address, one chat: without the UNIQUE a single holder could open the paid half for any number
+-- of chats by signing the same sentence in each of them, and the tier would stop meaning that this
+-- reader holds anything.
+--
+-- raw_tier is what the balance says right now and tier is what the reader actually gets. They
+-- differ for a week after a sell, which is the whole point of keeping both: a tier that could be
+-- dropped and reclaimed within a block is a tier that can be borrowed for the minute an alert is
+-- worth, and then returned.
+CREATE TABLE IF NOT EXISTS wallet_links (
+  chat_id     INTEGER PRIMARY KEY,
+  address     TEXT NOT NULL UNIQUE,
+  linked_at   INTEGER NOT NULL,
+  balance     TEXT NOT NULL DEFAULT '0',
+  checked_at  INTEGER NOT NULL DEFAULT 0,
+  tier        INTEGER NOT NULL DEFAULT 0,
+  raw_tier    INTEGER NOT NULL DEFAULT 0,
+  -- When the balance last reached the level it is at now. A grant after a sell waits from here.
+  raw_since   INTEGER NOT NULL DEFAULT 0,
+  -- When a sell last cost this wallet a tier. Null means it has never dropped, and the first grant
+  -- is immediate: the week is a penalty for selling, not a queue for arriving.
+  dropped_at  INTEGER,
+  -- Continuous holding at tier 1 or above, for the streak. Cleared by any drop below it.
+  streak_from INTEGER,
+  -- A link made on the website happens where the bot is not looking, so the chat has to be told
+  -- about it afterwards. Null means nobody has been told yet.
+  announced_at INTEGER
+) STRICT;
+
+-- Sentences waiting to be signed. Short-lived on purpose: a challenge that never expires is a
+-- signature somebody can be talked into producing today and have used against them next month.
+CREATE TABLE IF NOT EXISTS link_challenges (
+  chat_id   INTEGER PRIMARY KEY,
+  -- The secret in the URL the bot hands out. Whoever holds it can prove a wallet into this chat,
+  -- which is why it is unguessable and short-lived; what it cannot do is prove somebody else's.
+  token     TEXT NOT NULL UNIQUE,
+  -- Null until a wallet is named: the page fills it in when one connects, and the manual path
+  -- fills it in from the address typed after /link.
+  address   TEXT,
+  nonce     TEXT NOT NULL,
+  issued_at INTEGER NOT NULL
+) STRICT;
+
+-- API keys, one per linked chat. The key stands in for the address so a caller never has to send a
+-- signature with a request, and it is revoked by unlinking, which is the same act that gave it.
+CREATE TABLE IF NOT EXISTS api_keys (
+  key        TEXT PRIMARY KEY,
+  chat_id    INTEGER NOT NULL,
+  address    TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  last_at    INTEGER NOT NULL DEFAULT 0,
+  calls      INTEGER NOT NULL DEFAULT 0
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_api_keys_chat ON api_keys(chat_id);
+
 CREATE TABLE IF NOT EXISTS pools (
   token       TEXT PRIMARY KEY,
   pool_id     TEXT NOT NULL,

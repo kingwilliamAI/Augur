@@ -1,11 +1,12 @@
 import { buildCard } from "./card.ts";
-import { EXPLORER } from "./config.ts";
+import { CFG, EXPLORER } from "./config.ts";
 import { getMeta, type DB } from "./db.ts";
 import { graduationCapUsd, graduationMultiple } from "./pool.ts";
 import { formatUsd, startingCapUsd } from "./prices.ts";
 import { quoteFromCache } from "./quote.ts";
 import { loadModel, scoreOne, scoreRecent, type Scored } from "./score.ts";
 import { modelId } from "./track.ts";
+import { linkOf, pendingRestore, streakDays, tiersConfigured } from "./tiers.ts";
 
 /**
  * What the bot says, kept apart from how it says it.
@@ -22,8 +23,18 @@ export const esc = (s: string): string =>
 
 export const short = (a: string): string => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
+/**
+ * A duration at the coarsest unit that still says something.
+ *
+ * Days were added when the tier cooldown started printing "168.0h", which is a true statement of a
+ * week that nobody reads as one. Anything past two days is written in days for the same reason the
+ * rest of this reads in minutes and hours: the number is there to be understood at a glance.
+ */
 export const ago = (sec: number): string =>
-  sec < 90 ? `${Math.round(sec)}s` : sec < 5400 ? `${Math.round(sec / 60)}m` : `${(sec / 3600).toFixed(1)}h`;
+  sec < 90 ? `${Math.round(sec)}s`
+    : sec < 5400 ? `${Math.round(sec / 60)}m`
+      : sec < 172_800 ? `${(sec / 3600).toFixed(1)}h`
+        : `${(sec / 86400).toFixed(1)}d`;
 
 export const HELP = [
   "<b>Augur</b> watches every launch on pons v2 and scores it on this machine.",
@@ -41,8 +52,16 @@ export const HELP = [
   + "backlog.",
   "/top — the strongest launches on the board right now, whatever your threshold.",
   "/token <i>0x…</i> — everything known about one launch: both peaks, the creator's record, the tax.",
-  "/status — whether the watcher is still keeping up, and how old the model is.",
+  "/status — whether the watcher is still keeping up, how old the model is, what your tier is.",
+  "/link <i>0x…</i> — prove a wallet by signing a sentence. No gas, no key, nothing moved.",
+  "/verify <i>0x…</i> — the signature that finishes /link. /unlink forgets the wallet again.",
+  "/key — an API key for the board, once a linked wallet is holding.",
   "/stop — no more alerts, and your record here is deleted.",
+  "",
+  "<b>What holding $AUGUR changes</b>",
+  "Free alerts arrive a minute after the score is written and stop below a floor. A holder gets them "
+  + "the second the score exists, at any threshold, plus an API key and history exports. Selling drops "
+  + "the tier at once; buying back returns it a week later, so it cannot be borrowed for a minute.",
   "",
   "<i>This bot never asks for a key, a seed or an approval, holds no funds and signs nothing. "
   + "No command here takes a private key: anything claiming to be this bot and asking for one is not.</i>",
@@ -236,6 +255,46 @@ export function statusText(db: DB, now = Math.floor(Date.now() / 1000)): string 
     `<b>launches</b> ${total.toLocaleString()} on record`,
     `<b>model</b> ${loadModel() ? modelId() : "none. Run: npm run train"}`,
   ].join("\n");
+}
+
+/**
+ * What this chat's tier is, and what it would take to change it.
+ *
+ * Written to be readable by someone who has not decided whether to hold anything: it says what the
+ * free bot does rather than only what it does not, because a reader who is being sold to deserves
+ * to know what they already have.
+ */
+export function tierText(db: DB, chatId: number, now = Math.floor(Date.now() / 1000)): string {
+  if (!tiersConfigured()) {
+    return "<b>tier</b> everything is open: the thresholds are not set yet, so every reader gets the "
+      + "instant alerts. When they are set they will be printed here and on the roadmap first.";
+  }
+  const link = linkOf(db, chatId);
+  if (!link) {
+    return [
+      "<b>tier</b> free",
+      `alerts arrive ${CFG.freeDelaySec}s after the score is written, at ${CFG.freeMinScore}% and above`,
+      "<code>/link 0x…</code> proves a wallet and lifts both, no gas and no key",
+    ].join("\n");
+  }
+  const lines = [
+    `<b>tier</b> ${link.tier === 0 ? "free" : link.tier}`,
+    `<b>wallet</b> <code>${short(link.address)}</code>`,
+    `<b>balance</b> ${(Number(BigInt(link.balance) / (10n ** 15n)) / 1000).toLocaleString()} $AUGUR`
+      + (link.checked_at ? `, read ${ago(now - link.checked_at)} ago` : ", not read yet"),
+  ];
+  const streak = streakDays(link, now);
+  if (streak > 0) lines.push(`<b>streak</b> ${streak} day${streak === 1 ? "" : "s"} holding`);
+  const pending = pendingRestore(link, now);
+  if (pending) {
+    lines.push(`<b>tier ${pending.tier}</b> comes back in ${ago(pending.atSec - now)}: `
+      + "the balance is there, the week since the sell is not");
+  } else if (link.tier === 0) {
+    lines.push(`${CFG.tier1Tokens.toLocaleString()} $AUGUR opens instant alerts at any threshold`);
+  } else if (link.tier === 1 && CFG.tier2Tokens > 0) {
+    lines.push(`${CFG.tier2Tokens.toLocaleString()} $AUGUR takes the history export from 7 days to 30`);
+  }
+  return lines.join("\n");
 }
 
 export function topText(db: DB, windowHours: number, limit = 5): string {

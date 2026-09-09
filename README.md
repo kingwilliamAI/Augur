@@ -14,7 +14,7 @@ local · open · no wallet · no key · nothing leaves your machine
 
 <br>
 
-![tests](https://img.shields.io/badge/tests-95%20passing-9ae600?style=flat-square)
+![tests](https://img.shields.io/badge/tests-135%20passing-9ae600?style=flat-square)
 ![models](https://img.shields.io/badge/models-2%20GBDT-9ae600?style=flat-square)
 ![node](https://img.shields.io/badge/node-%E2%89%A522.6-9ae600?style=flat-square)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-1-9ae600?style=flat-square)
@@ -316,6 +316,39 @@ from the scanner, and the scanner has no opinion about it.
 
 The scanner does not need the token to work. It holds no key, has never needed one, and nothing in
 this repository changes when an address exists.
+
+### What holding it opens
+
+Only on the hosted half. Everything in this repository stays free and MIT, and a clone you run
+yourself has no tiers in it at all: the scanner cannot tell whether you hold anything, and the board
+you run answers you the same either way. What the token pays for is the machine that runs the hosted
+board and the bot around the clock.
+
+A wallet is proved by signing a sentence. It costs no gas, moves nothing, and hands over no key.
+`/link` in the bot opens a page on the hosted board that asks the wallet for one signature and posts
+it back; `/link 0x…` instead hands you the sentence to sign wherever you like and takes it back with
+`/verify 0x…`. `/unlink` forgets the wallet, the tier and the key together. There is no command and
+no page anywhere in this project that asks for a private key, a seed, an approval, or a transaction.
+
+The connect button on the hosted site is the one place any of this touches a wallet, and it does two
+things: reads the address, and asks for that one signature. A reader who never wants to connect
+anything never has to — nothing on the site needs a wallet to be read, and the typed path exists for
+exactly that reason.
+
+| | Free | Holding |
+|---|---|---|
+| Alerts | a minute after the score is written, above a floor | the second the score exists, at any threshold |
+| API | rate limited per address | a key of your own, with its own limit |
+| History | — | `/api/export`, the claims this machine made before the outcomes existed |
+
+Selling drops the tier on the next balance reading, and buying back returns it a week later rather
+than at once. That is not a penalty for changing your mind; it is what stops the tier from being
+rented for the one minute an alert is worth. Balances are re-read hourly, and a reader whose tier
+changes is told so rather than quietly demoted.
+
+The thresholds are set through the environment (`TIER1_TOKENS`, `TIER2_TOKENS`). While both are
+zero the paid half is switched off and every reader gets everything, which is how this ships before
+a supply is decided.
 
 <br>
 
