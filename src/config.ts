@@ -34,15 +34,16 @@ export const CFG = {
   /**
    * The token the coin page is about.
    *
-   * $AUGUR does not exist yet, and a page that describes a coin is only worth reading if the
-   * numbers on it are real. So this points at a launched token in the meantime and the page says
-   * plainly that it is standing in; when the real one launches this is the only line that changes.
+   * $AUGUR is deployed at the address below. It was deployed directly rather than through the pons
+   * factory, so there is no launch row for it: the coin page falls back to naming the contract and
+   * saying the factory figures are not available, which is the honest reading. A stand-in token was
+   * used here before and the page never labelled it, so it read as somebody else's coin being ours.
    *
    * Empty turns the coin page back into the "not launched" notice.
    */
-  coinToken: str("COIN_TOKEN", "0xb19f5a6e22f9057980b08ff05b7f5a6878ab0c8a").toLowerCase(),
+  coinToken: str("COIN_TOKEN", "0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c").toLowerCase(),
   /** Set once $AUGUR itself is the token above, so the page stops calling itself a stand-in. */
-  coinIsOurs: str("COIN_IS_OURS", "0") === "1",
+  coinIsOurs: str("COIN_IS_OURS", "1") === "1",
   /**
    * Who stands behind the coin, so a reader can check the name against an account rather than
    * against this page alone. A page vouching only for itself is worth nothing to someone deciding

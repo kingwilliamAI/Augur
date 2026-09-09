@@ -609,12 +609,12 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
 
     <a class="tokencard" href="#/token">
       <div style="min-width:0">
-        <div class="hd"><img class="coin img" src="/icon-128.png" alt=""><b style="font-size:20px;letter-spacing:-.02em">$AUGUR</b><span class="pill">pons v2 · Robinhood Chain</span><span style="font:500 11px var(--mono);color:var(--t55)">not launched yet</span></div>
-        <div class="contract"><span class="k">contract</span><span class="addr" style="color:var(--t45)">no address published. Anything claiming to be $AUGUR before one appears here is not ours</span></div>
-        <div style="margin-top:12px;font-size:12.5px;color:var(--t6);line-height:1.5">When it launches it will go through the same factory as every other token here, and this card will read the same on-chain facts as any other card. Until then there is nothing to buy.</div>
+        <div class="hd"><img class="coin img" src="/icon-128.png" alt=""><b style="font-size:20px;letter-spacing:-.02em">$AUGUR</b><span class="pill">pons v2 · Robinhood Chain</span><span style="font:500 11px var(--mono);color:var(--t55)">0x04d2…f72c</span></div>
+        <div class="contract"><span class="k">contract</span><span class="addr">0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c</span></div>
+        <div style="margin-top:12px;font-size:12.5px;color:var(--t6);line-height:1.5">This is the only $AUGUR contract; every other address carrying this name is not ours. It was deployed directly rather than through the pons factory, so this card cannot read the on-chain facts it reads for a factory launch.</div>
       </div>
       <div class="tiles">
-        <div class="tile"><div class="k">Status</div><div class="v" style="color:var(--t45)">—</div><div class="s">not launched</div></div>
+        <div class="tile"><div class="k">Status</div><div class="v">Published</div><div class="s">direct deploy</div></div>
         <div class="tile"><div class="k">Quote asset</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
         <div class="tile"><div class="k">Creator self-buy</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
         <div class="tile"><div class="k">Creator tax</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
@@ -818,7 +818,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <div class="row2"><b>Alert bot</b><span>built, run it yourself</span></div>
         <div class="row2"><b>Room</b><span>not created</span></div>
         <div class="row2"><b>Tape bot</b><span>not written</span></div>
-        <div class="row2"><b>Contract</b><span>not launched</span></div>
+        <div class="row2"><b>Contract</b><span>0x04d2…f72c</span></div>
         <div class="row2"><b>Depends on</b><span>$AUGUR</span></div>
       </div>
     </div>
@@ -972,9 +972,9 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
     </div>
     <div class="ftcol ftcoin">
       <h4>$AUGUR · the only contract</h4>
-      <div class="ftaddr" id="ft-addr">not launched yet</div>
+      <div class="ftaddr" id="ft-addr">0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c</div>
       <a class="ftlink" href="#/token">Coin page →</a>
-      <p class="ftwarn">No address has been published. Every other address with this name is not ours.</p>
+      <p class="ftwarn">This is the only contract. Every other address with this name is not ours.</p>
     </div>
   </div>
   <div class="wrap ftbar">
@@ -1583,7 +1583,7 @@ async function loadCoin() {
 
   const box = $("coin-standin");
   if (!d.configured || !d.found) {
-    box.innerHTML = '<div class="notyet"><b>Not launched.</b> There is no $AUGUR contract yet, so there is nothing to show here. Anything claiming to be $AUGUR before an address appears on this page is not ours.</div>';
+    box.innerHTML = '<div class="notyet"><b>$AUGUR · 0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c</b><br>This is the only $AUGUR contract; every other address carrying this name is not ours. It was deployed directly rather than through the pons factory, so the live figures below are not available for it.</div>';
     return;
   }
 

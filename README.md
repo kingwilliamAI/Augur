@@ -24,11 +24,9 @@ local · open · no wallet · no key · nothing leaves your machine
 
 <br>
 
-<!-- $AUGUR: when the token launches, replace `not launched yet` with the contract address.
-     This line and the "The token" section near the bottom are the only two places to change. -->
-**$AUGUR** · `not launched yet`
+**$AUGUR** · `0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c`
 
-<sub>No address has been published. Anything claiming to be $AUGUR before one appears here is not ours.</sub>
+<sub>This is the only $AUGUR contract. Every other address carrying this name is not ours.</sub>
 
 <br>
 
@@ -305,15 +303,15 @@ Nothing here needs a key, because nothing here signs.
 
 ## The token
 
-**$AUGUR** · `not launched yet`
+**$AUGUR** · `0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c`
 
-There is no contract address yet, and this file is where one will appear. Anything claiming to be
-$AUGUR before an address is published here is not ours.
+The address above is the only one. It is published here and on the site, and nowhere else; anything
+carrying this name at another address is not ours.
 
-When it does launch it will go through the same factory as every other token on pons, and its card
-on the board will read the same on-chain facts as any other card: what the creator bought, which
+It was deployed directly rather than through the pons factory, so the board cannot read on-chain
+facts about it the way it does for a factory launch: what the creator bought, which
 wallets were exempted from the opening tax, where the fees are routed. It gets no special treatment
-from the scanner, and the scanner has no opinion about it. Until then there is nothing to buy.
+from the scanner, and the scanner has no opinion about it.
 
 The scanner does not need the token to work. It holds no key, has never needed one, and nothing in
 this repository changes when an address exists.
