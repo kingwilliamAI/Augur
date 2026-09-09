@@ -802,14 +802,14 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
   <div class="doc">
     <h1>Telegram</h1>
     <div class="sub">One room, one bot.</div>
-    <div class="notyet"><b>The room does not exist yet.</b> There is no $AUGUR contract for it to be about, and no official chat of any kind. Anyone contacting you now claiming to be the augur bot, the team, or support, is not. What does exist is the alert bot below, and it is one you run yourself: it is your bot, on your machine, under a token only you hold.</div>
+    <div class="notyet"><b>The bot is <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a>. The room does not exist yet.</b> There is no official chat of any kind, and the bot never opens a conversation. Anyone contacting you first claiming to be the augur bot, the team, or support, is not. If you would rather not talk to our bot at all, the same bot runs on your own machine under a token only you hold.</div>
     <div class="cols2">
       <div class="prose">
         <h2><span class="n">&middot;</span>The alert bot, today</h2>
-        <p>Running <code>npm run telegram</code> puts the board in a chat. You create the bot yourself with @BotFather, put its token in <code>.env</code>, and it talks to nobody else: <code>/watch 8</code> sets a floor, and every launch that clears it arrives with its score, its rank and its three reasons. <code>/token 0x…</code> answers with the card, <code>/top</code> with the highest scoring launches right now, <code>/status</code> with whether the watcher is still alive.</p>
-        <p>This is the one part of the project that speaks to a third party, so it is worth saying exactly what leaves: launch addresses and a number this machine computed, both public. No key, no seed, nothing about a wallet. It is a separate command you start on purpose, never part of the watcher.</p>
-        <h2><span class="n">&middot;</span>The room, later</h2>
-        <p>The plan is a single room that acts as the tape: every $AUGUR buy lands in it the moment it clears the pool, with the wallet, the size and the price. The bot answers questions in the room, and in a direct message it opens Pro for anyone who can prove the holding.</p>
+        <p>Open <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a> and send <code>/start</code>. <code>/watch 8</code> sets a floor, and every launch that clears it arrives with its score, its rank and its three reasons, seconds after the block. <code>/token 0x…</code> answers with the card, <code>/top</code> with the highest scoring launches right now, <code>/status</code> with whether the watcher is keeping up, <code>/stop</code> ends it and deletes your record. It is free to everyone today.</p>
+        <p>The same bot runs on your own machine: <code>npm run telegram</code> with a token you create at @BotFather. Either way, what leaves is launch addresses and a number the board computed, both public. No key, no seed, nothing about a wallet. Our copy keeps one row per chat, the threshold and the chat id, and <code>/stop</code> removes it.</p>
+        <h2><span class="n">&middot;</span>What comes next</h2>
+        <p>Holder tiers, in this bot. <code>/link</code> will answer with a plain sentence to sign; the signature proves the wallet and costs no gas. Holding $AUGUR then opens instant alerts at any threshold, <code>/follow</code> on deployers, an API key and history exports, and free alerts arrive a minute after the score is written. Thresholds are set when it ships and printed on the roadmap. A room that acts as the tape for $AUGUR buys is still planned, and still does not exist.</p>
         <h2><span class="n red">&middot;</span>What the bot will never do</h2>
         <div class="never">
           <div><i>x</i><span>Never asks for a key, a seed phrase or an approval.</span></div>
@@ -822,11 +822,11 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
       </div>
       <div class="side">
         <h3>Status</h3>
-        <div class="row2"><b>Alert bot</b><span>built, run it yourself</span></div>
+        <div class="row2"><b>Alert bot</b><span>@AugurRHbot, live</span></div>
+        <div class="row2"><b>Holder tiers</b><span>next</span></div>
         <div class="row2"><b>Room</b><span>not created</span></div>
         <div class="row2"><b>Tape bot</b><span>not written</span></div>
         <div class="row2"><b>Contract</b><span>0x04d2…f72c</span></div>
-        <div class="row2"><b>Depends on</b><span>$AUGUR</span></div>
       </div>
     </div>
   </div>
@@ -836,10 +836,11 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
   <div class="doc">
     <h1>Pro</h1>
     <div class="sub">The terminal on your machine is free and stays free. Pro is the hosted half.</div>
-    <div class="notyet"><b>Not built yet.</b> There is no hosted board, no holder check and no $AUGUR contract. Nothing on this page can be bought, signed or unlocked today. It is here so the terms are visible before any of it exists.</div>
+    <div class="notyet"><b>Tiers are not built yet.</b> The hosted board and the alert bot are live and free to everyone, and there is nothing to sign or unlock today. This page is here so the terms are visible before any of it exists.</div>
     <div class="cols2">
       <div class="prose">
-        <p>The plan is that holding $AUGUR opens the hosted site up: more watches at once, more live feeds, the heavy reads without a challenge, and creator history over any window. Proving the holding is a signature over a plain sentence. A signature has no chain, so the wallet can sit anywhere, and the site never asks for a key, a seed or an approval.</p>
+        <p>Holding $AUGUR will open the hosted half up. Free keeps the board, the bot and the card, with alerts arriving a minute after the score is written and API reads limited per address. A holder gets the alert the second it is written at any threshold, follows on deployers, an API key with a real limit, and history exports. Proving the holding is a signature over a plain sentence in the bot: no gas, no key, no approval, and the wallet can sit anywhere. Sell below the line and the tier drops; it comes back a week after the balance does.</p>
+        <p>What is not for sale is a result. The backtest in the repository says that following the score does not pay, and nothing on this page claims otherwise. Pro is the server, the history and the speed, not an edge.</p>
         <h2><span class="n">&middot;</span>What stays free, always</h2>
         <p>Everything you are looking at. The board, the card behind every launch, the model and its validation, the prediction log. You run it yourself, it talks to a public RPC and nothing else, and the score you compute is the score the hosted site shows. That is the point of it being open, and Pro does not change it.</p>
       </div>
@@ -848,9 +849,12 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <div class="row2"><b>Local board</b><span>free, always</span></div>
         <div class="row2"><b>Full card and model</b><span>free, always</span></div>
         <div class="row2"><b>Prediction log</b><span>free, always</span></div>
-        <div class="row2"><b>Hosted board</b><span>planned</span></div>
-        <div class="row2"><b>Alerts</b><span>planned</span></div>
-        <div class="row2"><b>Holder check</b><span>planned</span></div>
+        <div class="row2"><b>Hosted board</b><span>free, live</span></div>
+        <div class="row2"><b>Alerts</b><span>free today, a minute late once tiers ship</span></div>
+        <div class="row2"><b>Alerts, instant, any threshold</b><span>Pro, planned</span></div>
+        <div class="row2"><b>Follow a deployer</b><span>Pro, planned</span></div>
+        <div class="row2"><b>API key, history exports</b><span>Pro, planned</span></div>
+        <div class="row2"><b>Holder check</b><span>next</span></div>
       </div>
     </div>
   </div>
