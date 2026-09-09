@@ -32,6 +32,48 @@ const num = (h: unknown): number => Number(BigInt(h as string));
 export const asTopic = (address: string): `0x${string}` =>
   `0x${address.toLowerCase().replace(/^0x/, "").padStart(64, "0")}` as `0x${string}`;
 
+export type FeeRecipient = { address: string; fromBlock: number };
+
+/**
+ * Every address the launch has paid, oldest first, each with the block it took over at.
+ *
+ * The launch row holds the recipient declared in the launch calldata, and re-enriching reads the same
+ * calldata again, so that column never learns that the creator moved the fee. The factory logs the
+ * move as `CreatorFeeRecipientUpdated` and the watcher keeps those rows; this is the one place that
+ * puts the two together, so the ledger follows the money rather than the launch's first intention.
+ */
+export function feeRecipients(db: DB, token: string): FeeRecipient[] {
+  const l = db.prepare("SELECT block, creator_fee_recipient FROM launches WHERE token = ?").get(token) as
+    { block: number; creator_fee_recipient: string | null } | undefined;
+  if (!l) return [];
+  const changes = db.prepare(
+    "SELECT prev, next, block FROM fee_recipient_changes WHERE token = ? ORDER BY block, log_index",
+  ).all(token) as Array<{ prev: string; next: string; block: number }>;
+
+  const out: FeeRecipient[] = [];
+  const add = (address: string | null, fromBlock: number): void => {
+    const a = address?.toLowerCase();
+    if (a && !out.some((r) => r.address === a)) out.push({ address: a, fromBlock });
+  };
+  add(l.creator_fee_recipient ?? changes[0]?.prev ?? null, l.block);
+  for (const c of changes) add(c.next, c.block);
+  return out;
+}
+
+/**
+ * The address the launch pays today, or null when nothing is on record yet.
+ *
+ * Read from the latest move rather than from the end of the list above, which drops repeats: a fee
+ * moved away and back again is paid to the first wallet, and the list would name the second.
+ */
+export function currentFeeRecipient(db: DB, token: string): string | null {
+  const last = db.prepare(
+    "SELECT next FROM fee_recipient_changes WHERE token = ? ORDER BY block DESC, log_index DESC LIMIT 1",
+  ).get(token) as { next: string } | undefined;
+  if (last?.next) return last.next.toLowerCase();
+  return feeRecipients(db, token).at(-1)?.address ?? null;
+}
+
 export type EscrowCounts = { credited: number; claimed: number };
 
 /**
@@ -269,16 +311,15 @@ const sumWei = (rows: Array<{ amount_wei: string }>): bigint =>
  */
 export function feeLedger(db: DB, limit = 25): FeeLedger {
   const coin = CFG.coinToken;
-  const l = coin
-    ? db.prepare("SELECT creator_fee_recipient FROM launches WHERE token = ?").get(coin) as
-      { creator_fee_recipient: string | null } | undefined
-    : undefined;
-  const recipient = (l?.creator_fee_recipient ?? null)?.toLowerCase() ?? null;
+  // Every wallet the launch has paid, so a move of the fee does not erase what came before it.
+  const recipients = coin ? feeRecipients(db, coin) : [];
+  const recipient = coin ? currentFeeRecipient(db, coin) : null;
   const splitter = splitConfig(db);
 
-  const events = recipient
-    ? db.prepare("SELECT kind, amount_wei, ts FROM fee_events WHERE recipient = ?").all(recipient) as
-      Array<{ kind: string; amount_wei: string; ts: number }>
+  const events = recipients.length
+    ? db.prepare(
+      `SELECT kind, amount_wei, ts FROM fee_events WHERE recipient IN (${recipients.map(() => "?").join(",")})`,
+    ).all(...recipients.map((r) => r.address)) as Array<{ kind: string; amount_wei: string; ts: number }>
     : [];
   const credited = events.filter((e) => e.kind === "credited");
   const claimed = events.filter((e) => e.kind === "claimed");

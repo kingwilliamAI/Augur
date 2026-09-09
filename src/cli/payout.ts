@@ -4,6 +4,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { robinhood, sleep } from "../chain.ts";
 import { CFG, EXPLORER } from "../config.ts";
 import { openDb } from "../db.ts";
+import { currentFeeRecipient } from "../fees.ts";
 import { format, parseUnits, planPayout, seconds, type Destination } from "../payout.ts";
 
 /**
@@ -96,8 +97,7 @@ async function main(): Promise<void> {
    * away from the wallet is the normal way to decide whether to run it near one.
    */
   const account = RAW_KEY ? privateKeyToAccount(RAW_KEY as `0x${string}`) : null;
-  const onRecord = (db.prepare("SELECT creator_fee_recipient r FROM launches WHERE token = ?")
-    .get(CFG.coinToken) as { r: string | null } | undefined)?.r ?? null;
+  const onRecord = currentFeeRecipient(db, CFG.coinToken);
   const source = (account?.address ?? onRecord ?? "").toLowerCase();
 
   if (!source) {
