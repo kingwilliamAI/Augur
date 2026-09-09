@@ -1,9 +1,13 @@
 import { buildCard } from "./card.ts";
 import { CFG, EXPLORER } from "./config.ts";
 import { getMeta, type DB } from "./db.ts";
+import { curvePrices } from "./curve.ts";
+import { baseGradRate, followsOf, walletRecord, type RecentLaunch, type WalletRecord } from "./follows.ts";
 import { graduationCapUsd, graduationMultiple } from "./pool.ts";
-import { formatUsd, startingCapUsd } from "./prices.ts";
+import { formatUsd, marketCapUsd, startingCapUsd } from "./prices.ts";
 import { quoteFromCache } from "./quote.ts";
+import { tracksOf, type Buyer } from "./tracks.ts";
+import { traderEntries, traderRecord, type TraderRecord } from "./traders.ts";
 import { loadModel, scoreOne, scoreRecent, type Scored } from "./score.ts";
 import { modelId } from "./track.ts";
 import { linkOf, pendingRestore, streakDays, tiersConfigured } from "./tiers.ts";
@@ -52,6 +56,11 @@ export const HELP = [
   + "backlog.",
   "/top — the strongest launches on the board right now, whatever your threshold.",
   "/token <i>0x…</i> — everything known about one launch: both peaks, the creator's record, the tax.",
+  "/follow <i>0x…</i> — a creator's address off any card. Their next launch reaches you the second it "
+  + "lands, whatever it scores. /following lists them, /unfollow stops one.",
+  "/track <i>0x…</i> — a launch you are holding. You get a message when a wallet with a record buys "
+  + "into it: who, how much, at what cap. /tracking lists them, /untrack stops one.",
+  "/trader <i>0x…</i> — what a wallet's record is, and what had to be thrown out to get it.",
   "/status — whether the watcher is still keeping up, how old the model is, what your tier is.",
   "/link <i>0x…</i> — prove a wallet by signing a sentence. No gas, no key, nothing moved.",
   "/verify <i>0x…</i> — the signature that finishes /link. /unlink forgets the wallet again.",
@@ -369,4 +378,252 @@ export function tokenText(db: DB, raw: string): string {
 
   blocks.push([`<code>${t}</code>`]);
   return blocks.map((b) => b.join("\n")).join("\n\n");
+}
+
+/* ── following a wallet ─────────────────────────────────────────────────────── */
+
+/**
+ * A wallet's record, as the rows both the alert and the list print.
+ *
+ * The base rate stands beside the wallet's own rate rather than being left to the reader, because
+ * without it the number is unreadable: two graduations in thirty-one launches sounds thin and is
+ * three times typical. Where this machine has not read enough history to have a base rate, the
+ * comparison is dropped rather than guessed.
+ */
+export function recordRows(db: DB, rec: WalletRecord, now = Math.floor(Date.now() / 1000)): Row[] {
+  const base = baseGradRate(db, now);
+  const rows: Row[] = [["launches", rec.launches.toLocaleString()]];
+  if (rec.launches > 0) {
+    const pct = `${(100 * (rec.gradRate ?? 0)).toFixed(1)}%`;
+    const against = base ? `, typical ${(100 * base).toFixed(1)}%` : "";
+    rows.push(["graduated", `${rec.graduations}   ${pct}${against}`]);
+  }
+  if (rec.best) {
+    rows.push(["their best", `${rec.best.usd ?? `×${rec.best.multiple.toFixed(1)}`}`
+      + `${rec.best.symbol ? ` (${rec.best.symbol})` : ""}`]);
+  }
+  if (rec.lastTs) rows.push(["last launch", `${ago(now - rec.lastTs)} ago`]);
+  return rows;
+}
+
+/**
+ * One followed wallet's launch, the moment it lands.
+ *
+ * Written to answer a different question than a scored alert does. There the question is "is this
+ * worth a look", and the score leads. Here the reader has already decided that this wallet is worth
+ * a look, so what leads is which wallet it was and what that wallet has done before — and the score,
+ * when there is one yet, comes after as a second opinion rather than as the point.
+ *
+ * There may be no score at all. The claim is written a few seconds after the launch and this fires
+ * as soon as the launch is seen, which is the whole promise of the feature, so the message has to
+ * read properly without one.
+ */
+export function followAlert(db: DB, row: RecentLaunch, who: string, now = Math.floor(Date.now() / 1000)): string {
+  const card = buildCard(db, row.token);
+  const out: string[] = [];
+  const sym = row.symbol ?? card?.symbol ?? null;
+
+  out.push(
+    `<b>${esc(sym ?? short(row.token))}</b>   <i>a wallet you follow just launched</i>`,
+    `<i>${ago(Math.max(0, now - row.ts))} old${card ? ` · ${esc(card.launch.quoteSymbol)}` : ""}`
+    + `${row.name && row.name !== sym ? ` · ${esc(row.name)}` : ""}</i>`,
+  );
+
+  const claim = db.prepare("SELECT probability, rank, of FROM predictions WHERE token = ?")
+    .get(row.token) as { probability: number; rank: number; of: number } | undefined;
+  out.push("", claim
+    ? `<b>${(100 * claim.probability).toFixed(1)}%</b> to reach the pool · #${claim.rank} of ${claim.of.toLocaleString()}`
+    : "<i>not scored yet: this went out on the wallet, not on the number</i>");
+
+  out.push("", `<b>the wallet</b> <code>${short(who)}</code>`,
+    table(recordRows(db, walletRecord(db, who, row.token), now)));
+
+  if (card) {
+    const L = card.launch;
+    const facts: string[] = [];
+    if (L.selfBuy) facts.push(`self-buy ${esc(L.selfBuy)} ${esc(L.quoteSymbol)}`);
+    if (L.creatorTaxBps !== null) facts.push(`tax ${(L.creatorTaxBps / 100).toFixed(2)}%`);
+    if (card.exemptions.length) facts.push(`${card.exemptions.length} tax-exempt`);
+    if (facts.length) out.push(facts.join(" · "));
+  }
+
+  out.push("", `<code>${row.token}</code>`);
+  return out.join("\n");
+}
+
+/** The reply to /follow: what was added, and what that wallet has done. */
+export function followedText(db: DB, address: string, count: number, cap: number, now = Math.floor(Date.now() / 1000)): string {
+  const rec = walletRecord(db, address);
+  const head = rec.launches === 0
+    ? "following <code>" + short(address) + "</code>. Nothing launched from it has been read here yet, "
+      + "so this is a bet on what it does next rather than on what it has done."
+    : `following <code>${short(address)}</code>.`;
+  const lines = [head];
+  if (rec.launches > 0) lines.push("", table(recordRows(db, rec, now)));
+  if (rec.unread > 0) {
+    lines.push(rec.best
+      ? `<i>${rec.unread} of their curves have not been read on this machine, so the best above is a `
+        + "floor rather than their record.</i>"
+      : `<i>None of their ${rec.unread} curves has been read here yet, so there is no peak to show. `
+        + "Opening one of their launches on the board reads it.</i>");
+  }
+  lines.push("", `${count} of ${cap} wallets followed. Their next launch reaches you the second it lands, `
+    + "whatever it scores. /unfollow stops it.");
+  return lines.join("\n");
+}
+
+/** The list, with each wallet's record beside it. */
+export function followingText(db: DB, chatId: number, cap: number, now = Math.floor(Date.now() / 1000)): string {
+  const rows = followsOf(db, chatId);
+  if (!rows.length) {
+    return "not following anybody yet.\n\n<code>/follow 0x…</code> takes the creator address off any "
+      + "card and tells you the second that wallet launches again, whatever the launch scores.";
+  }
+  const blocks = rows.map((f) => {
+    const rec = walletRecord(db, f.address);
+    const grad = rec.launches === 0 ? "nothing read yet"
+      : `${rec.launches} launch${rec.launches === 1 ? "" : "es"}, ${rec.graduations} graduated`;
+    const best = rec.best ? ` · best ${rec.best.usd ?? `×${rec.best.multiple.toFixed(1)}`}` : "";
+    return `<code>${f.address}</code>\n${grad}${best}`;
+  });
+  return [`<b>following ${rows.length} of ${cap}</b>`, ...blocks].join("\n\n");
+}
+
+/* ── watching a launch for arrivals ──────────────────────────────────────────── */
+
+/** Whole quote units from raw ones, at the precision the number deserves. */
+const amount = (raw: number, decimals: number): string => {
+  const v = raw / 10 ** decimals;
+  return v >= 100 ? Math.round(v).toLocaleString() : v >= 1 ? v.toFixed(2) : v.toFixed(4).replace(/0+$/, "");
+};
+
+/** Market cap at a raw curve price, or a multiple of the open where the quote has no dollar price. */
+function capAt(db: DB, token: string, px: number, quoteSymbol: string, quoteDecimals: number): string {
+  const usd = marketCapUsd(px * (1e18 / 10 ** quoteDecimals), quoteSymbol);
+  if (usd !== null) return formatUsd(usd);
+  const p = curvePrices(db, token);
+  return p && p.first > 0 ? `×${(px / p.first).toFixed(1)} of the open` : "—";
+}
+
+/**
+ * The rule, in the words that go under every record.
+ *
+ * Printed with the number rather than kept in a document, because the number is only worth anything
+ * to a reader who can see what was thrown out to get it. Somebody who knows that entries on your own
+ * launches do not count can go and check that they do not.
+ */
+export const TRADER_RULE =
+  "<i>A record counts a wallet's first buy on each curve read here, minus three kinds of entry that "
+  + "can be arranged: launches they created, launches that waived the opening tax for them, and ones "
+  + "where they were more than half the buy volume. Ten of those across five creators is the bar, and "
+  + "the rate is the lower end of a 95% interval, so a lucky handful does not outrank a long record.</i>";
+
+/**
+ * Somebody with a record buying into a launch a reader is holding.
+ *
+ * Three facts lead, in the order a holder asks for them: who, how much, and at what price relative
+ * to where the launch is now. The record follows, because it is the reason the message was sent at
+ * all, and the rule follows that, because a record without its rule is a number to be trusted rather
+ * than checked.
+ */
+export function traderAlert(db: DB, token: string, buyer: Buyer, rec: TraderRecord): string {
+  const l = db.prepare("SELECT symbol, pair_token FROM launches WHERE token = ?").get(token) as
+    { symbol: string | null; pair_token: string } | undefined;
+  const q = quoteFromCache(db, l?.pair_token ?? "");
+  const out: string[] = [];
+
+  out.push(
+    `<b>${esc(l?.symbol ?? short(token))}</b>   <i>a wallet with a record just bought in</i>`,
+    "",
+    `<b>${amount(buyer.quote, q.decimals)} ${esc(q.symbol)}</b> at `
+    + `${esc(capAt(db, token, buyer.entryPrice, q.symbol, q.decimals))}`,
+  );
+
+  const rows: Row[] = [
+    ["entries", `${rec.entries} clean, ${rec.creators} creator${rec.creators === 1 ? "" : "s"}`],
+    ["graduated", `${rec.graduated}   ${((rec.rate ?? 0) * 100).toFixed(0)}%`
+      + (rec.base !== null ? `, base ${(rec.base * 100).toFixed(1)}%` : "")],
+  ];
+  if (rec.lower !== null && rec.lift !== null) {
+    rows.push(["at worst", `${(rec.lower * 100).toFixed(0)}%   ×${rec.lift.toFixed(1)} the base`]);
+  }
+  if (rec.medianMultiple !== null) rows.push(["median run", `×${rec.medianMultiple.toFixed(1)} to the curve high`]);
+  out.push("", `<b>the wallet</b> <code>${short(buyer.address)}</code>`, table(rows));
+
+  out.push("", TRADER_RULE, "", `<code>${buyer.address}</code>`);
+  return out.join("\n");
+}
+
+/** One wallet's record in full, whether or not it clears the bar. */
+export function traderText(db: DB, address: string): string {
+  const a = address.trim().toLowerCase();
+  if (!/^0x[0-9a-f]{40}$/.test(a)) return "that does not look like a wallet address";
+  const rec = traderRecord(db, a);
+  if (rec.entries === 0 && rec.excluded.own + rec.excluded.exempt + rec.excluded.ownMarket === 0) {
+    return `<code>${short(a)}</code> has not bought on any curve read on this machine.\n\n`
+      + "Curves are read when somebody opens a card, so this is a statement about what has been "
+      + "looked at here, not about the wallet.";
+  }
+
+  const rows: Row[] = [
+    ["entries", `${rec.entries} clean, ${rec.creators} creator${rec.creators === 1 ? "" : "s"}`],
+    ["graduated", `${rec.graduated}   ${((rec.rate ?? 0) * 100).toFixed(0)}%`
+      + (rec.base !== null ? `, base ${(rec.base * 100).toFixed(1)}%` : "")],
+  ];
+  if (rec.lower !== null) {
+    rows.push(["at worst", `${(rec.lower * 100).toFixed(0)}%`
+      + (rec.lift !== null ? `   ×${rec.lift.toFixed(1)} the base` : "")]);
+  }
+  if (rec.medianMultiple !== null) rows.push(["median run", `×${rec.medianMultiple.toFixed(1)} to the curve high`]);
+  const thrown = rec.excluded.own + rec.excluded.exempt + rec.excluded.ownMarket;
+  if (thrown > 0) {
+    rows.push(["not counted", `${thrown}: ${rec.excluded.own} their own, `
+      + `${rec.excluded.exempt} tax-exempt, ${rec.excluded.ownMarket} their own volume`]);
+  }
+
+  const verdict = rec.qualifies
+    ? "<b>clears the bar.</b> An alert goes out when this wallet buys a launch you are watching."
+    : `<b>does not clear the bar</b>: ${esc(rec.short)}.`;
+
+  const top = traderEntries(db, a, 3).map((e) => {
+    const mult = e.peakPrice !== null && e.entryPrice > 0 ? `×${(e.peakPrice / e.entryPrice).toFixed(1)}` : "—";
+    return `${esc(e.symbol ?? short(e.token))}  ${mult}${e.graduated ? "  reached the pool" : ""}`;
+  });
+
+  return [
+    `<b>${short(a)}</b>`, table(rows), verdict,
+    ...(top.length ? ["", "<b>their best entries</b>", top.join("\n")] : []),
+    "", TRADER_RULE, "", `<code>${a}</code>`,
+  ].join("\n");
+}
+
+/** The reply to /track. */
+export function trackedText(db: DB, token: string, count: number, cap: number): string {
+  const l = db.prepare("SELECT symbol FROM launches WHERE token = ?").get(token.toLowerCase()) as
+    { symbol: string | null } | undefined;
+  return [
+    `watching <b>${esc(l?.symbol ?? short(token))}</b> from this block on.`,
+    "",
+    "You get a message when a wallet with a record buys in: who, how much, and at what market cap. "
+    + "Wallets that were already in before now are history, not news, so they are not counted.",
+    "",
+    `${count} of ${cap} launches watched. /untrack stops one.`,
+  ].join("\n");
+}
+
+/** The list of watched launches, with how much of each curve has been read. */
+export function trackingText(db: DB, chatId: number, cap: number): string {
+  const rows = tracksOf(db, chatId);
+  if (!rows.length) {
+    return "not watching anything yet.\n\n<code>/track 0x…</code> takes a launch you are holding and "
+      + "tells you when a wallet with a record buys into it. /trader 0x… is what a record means.";
+  }
+  const lines = rows.map((r) => {
+    const l = db.prepare("SELECT symbol FROM launches WHERE token = ?").get(r.token) as
+      { symbol: string | null } | undefined;
+    const told = (db.prepare("SELECT count(*) c FROM tg_trader_sent WHERE chat_id = ? AND token = ?")
+      .get(chatId, r.token) as { c: number }).c;
+    return `<code>${r.token}</code>\n${esc(l?.symbol ?? "?")} · ${told} named so far`;
+  });
+  return [`<b>watching ${rows.length} of ${cap}</b>`, ...lines].join("\n\n");
 }

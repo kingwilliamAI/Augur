@@ -283,6 +283,52 @@ Nothing here needs a key, because nothing here signs.
 | `train` · `validate` | fit and print held-out metrics · rolling-origin folds |
 | `nightly` | backfill, enrich, retrain, in that order |
 | `telegram` | optional bot, the only part of this project that talks to a third party |
+| `fees` | where the curve fee went: escrow credits, claims, and every split the contract made |
+
+<br>
+
+## The bot, past the score
+
+`npm run telegram` runs the alert bot against a token you create with @BotFather, and the hosted copy
+is [@AugurRHbot](https://t.me/AugurRHbot). Two of its commands are not about the model at all.
+
+`/follow 0x…` takes a creator address off any card. When that wallet launches again the message goes
+out as soon as the watcher sees the block, whatever the launch scored, with the wallet's record beside
+it: launches, graduations, best peak, and the base rate to read them against. A wallet is matched on
+both names a launch can carry, the sender and the deployer the event names, because a sixth of
+launches are sent through a contract and only one of those two columns is the person.
+
+`/track 0x…` takes a launch you are holding and watches its curve. When a wallet with a record buys
+in, the bot says who, how much and at what market cap. Watching starts at the block you asked, never
+at the launch, so what arrives is an arrival rather than a history lesson.
+
+**What counts as a record**, since the answer is the whole feature and a rate anybody can manufacture
+is worth nothing. A record counts a wallet's first buy on each curve this machine has read, and then
+throws out three kinds of entry that can be arranged: launches the wallet created, launches whose
+creator waived the opening tax for it, and launches where it was more than half the buy volume. Ten
+of what survives, spread across five creators with no single creator supplying more than two in five,
+is the bar. The rate is the lower end of a 95% interval against the graduation rate of the read set,
+not of the chain, so three hits out of three does not outrank forty out of two hundred, and two
+wallets launching for each other clear none of it. `/trader 0x…` prints any wallet's record together
+with what was thrown out to get there, and `src/traders.test.ts` is nine attempts to fake one.
+
+The honest limit on both: curves are read on demand, so a record is a floor over what this machine
+has looked at, never a claim about everything a wallet ever did.
+
+<br>
+
+## Where the fee goes
+
+Every trade on a curve pays a fee, and every swap in the pool afterwards pays one too; both go to the
+address the launch named. `npm run fees` reads that ledger off the chain: what the escrow credited,
+what has been claimed, what the pool hook swept. The hosted board serves it at `/api/fees` and
+draws it at [getaugur.xyz/#/fees](https://getaugur.xyz/#/fees).
+
+Today that address is a wallet. `contracts/FeeSplitter.sol` is the contract meant to replace it: it
+divides every payout three ways, between running the board, holders, and buying $AUGUR back, in
+shares fixed when it is deployed. It has no owner, no setter, no pause and no sweep, so the split can
+be read off the chain instead of taken on trust, and the page says which of the two states the
+arrangement is actually in rather than describing the finished one. Deploying it is in DEPLOY.md.
 
 <br>
 
@@ -332,7 +378,7 @@ no page anywhere in this project that asks for a private key, a seed, an approva
 
 The connect button on the hosted site is the one place any of this touches a wallet, and it does two
 things: reads the address, and asks for that one signature. A reader who never wants to connect
-anything never has to — nothing on the site needs a wallet to be read, and the typed path exists for
+anything never has to: nothing on the site needs a wallet to be read, and the typed path exists for
 exactly that reason.
 
 | | Free | Holding |
@@ -340,6 +386,8 @@ exactly that reason.
 | Alerts | a minute after the score is written, above a floor | the second the score exists, at any threshold |
 | API | rate limited per address | a key of your own, with its own limit |
 | History | — | `/api/export`, the claims this machine made before the outcomes existed |
+| Followed wallets | 3 | 25, or 100 at tier 2 |
+| Watched launches | 2 | 10, or 25 at tier 2 |
 
 Selling drops the tier on the next balance reading, and buying back returns it a week later rather
 than at once. That is not a penalty for changing your mind; it is what stops the tier from being

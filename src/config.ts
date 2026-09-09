@@ -53,6 +53,15 @@ export const CFG = {
   coinX: str("COIN_X", "kingwilliam_"),
   /** Public source for the coin. Empty hides the line rather than showing a dead one. */
   coinRepo: str("COIN_REPO", "https://github.com/kingwilliamAI/Augur"),
+  /**
+   * The fee splitter, once one is deployed: see contracts/FeeSplitter.sol and DEPLOY.md.
+   *
+   * Empty means the curve fee still arrives at whatever wallet the launch names, and the fees page
+   * says so rather than describing a split that is not in force. The shares are not configured here
+   * on purpose: they are immutable in the contract, so the page reads them from it and nobody has to
+   * trust a number typed into a config file.
+   */
+  feeSplitter: str("FEE_SPLITTER", "").toLowerCase(),
   dbPath: str("DB_PATH", "./data/augur.db"),
   boardPort: num("BOARD_PORT", 4663),
   /**

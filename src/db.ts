@@ -219,6 +219,46 @@ CREATE TABLE IF NOT EXISTS tg_sent (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS tg_sent_at ON tg_sent(sent_at);
 
+-- Wallets a chat asked to be told about by name, rather than by score.
+--
+-- The alert this feeds is the one case where a launch nobody would rank goes out anyway: a reader
+-- who followed a wallet has already decided that this wallet is the signal, and a score floor
+-- applied on top would quietly overrule them. It is capped by how many wallets a chat may hold
+-- rather than by what they may be told, so the cost of the feature is bounded without the promise
+-- being hedged.
+CREATE TABLE IF NOT EXISTS tg_follows (
+  chat_id    INTEGER NOT NULL,
+  address    TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, address)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_follows_addr ON tg_follows(address);
+
+-- Launches a chat is holding and wants watched for arrivals, and who it has been told about.
+--
+-- This is the only thing the bot does that the watcher has not already collected: curve trades are
+-- read per token and on demand, so a tracked token is a request per pass and the list is capped
+-- because of it. The from_block column is where watching began, never the launch — a wallet that entered
+-- before anybody asked is history, and this table exists to deliver warnings.
+CREATE TABLE IF NOT EXISTS tg_tracks (
+  chat_id    INTEGER NOT NULL,
+  token      TEXT NOT NULL,
+  from_block INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, token)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_tracks_token ON tg_tracks(token);
+
+-- One message per wallet per token per chat. A wallet that keeps buying is the same arrival, and
+-- being told about it again on every pass is how a useful alert turns into a reason to mute the bot.
+CREATE TABLE IF NOT EXISTS tg_trader_sent (
+  chat_id INTEGER NOT NULL,
+  token   TEXT NOT NULL,
+  trader  TEXT NOT NULL,
+  sent_at INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, token, trader)
+) STRICT;
+
 -- The wallet a chat has proved it controls, and what its balance currently buys.
 --
 -- Proof is a signature over a sentence this table issued, which costs no gas and moves nothing; the
@@ -317,6 +357,28 @@ CREATE TABLE IF NOT EXISTS fee_events (
   PRIMARY KEY (tx, log_index)
 ) STRICT;
 CREATE INDEX IF NOT EXISTS ix_fee_recipient ON fee_events(recipient);
+
+-- What the splitter did with the fees, one row per release.
+--
+-- The three destinations are fixed in the contract and the shares are immutable, so this table is
+-- not where the arrangement is kept: it is where the arrangement is checked. Every row carries the
+-- transaction it came from, which is the whole point of putting the split on chain rather than
+-- describing it on a page.
+CREATE TABLE IF NOT EXISTS fee_splits (
+  tx           TEXT NOT NULL,
+  log_index    INTEGER NOT NULL,
+  -- The zero address for the chain's own currency, or the ERC-20 the fee arrived in.
+  asset        TEXT NOT NULL,
+  total_wei    TEXT NOT NULL,
+  server_wei   TEXT NOT NULL,
+  holders_wei  TEXT NOT NULL,
+  buyback_wei  TEXT NOT NULL,
+  total_eth    REAL NOT NULL,
+  block        INTEGER NOT NULL,
+  ts           INTEGER NOT NULL,
+  PRIMARY KEY (tx, log_index)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_splits_block ON fee_splits(block DESC);
 
 CREATE TABLE IF NOT EXISTS fee_recipient_changes (
   token     TEXT NOT NULL,

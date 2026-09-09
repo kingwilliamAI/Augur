@@ -3,10 +3,22 @@ import { join } from "node:path";
 import { parseAbi } from "viem";
 import { stateClient, withRetry } from "../chain.ts";
 import { ADDR, CFG, EXPLORER } from "../config.ts";
-import { openDb, type DB } from "../db.ts";
+import { getMeta, openDb, type DB } from "../db.ts";
 import { loadModel, scoreRecent, type Scored } from "../score.ts";
 import { claimsFor } from "../alerts.ts";
-import { alertText, HELP, statusText, tierText, tokenText, topText, type LaunchMeta } from "../tgtext.ts";
+import { indexCurve } from "../curve.ts";
+import {
+  follow, followedBy, followingChats, followSet, FOLLOW_CAP, isAddress, recentLaunches, unfollow,
+} from "../follows.ts";
+import {
+  markTraderSent, newBuyers, retireGraduated, track, trackedTokens, TRACK_CAP, untrack,
+  watchersOf,
+} from "../tracks.ts";
+import { readBaseRate, traderRecord, type TraderRecord } from "../traders.ts";
+import {
+  alertText, esc, followAlert, followedText, followingText, HELP, statusText, tierText, tokenText,
+  topText, traderAlert, traderText, trackedText, trackingText, type LaunchMeta,
+} from "../tgtext.ts";
 import {
   applyBalance, challenge, CHALLENGE_TTL_SEC, effectiveMin, gateFor, issueKey, linkOf,
   markAnnounced, ripeFor, tierOf, tiersConfigured, unannouncedLinks, unlink, verifyLink, type Tier,
@@ -341,9 +353,115 @@ async function handle(chatId: number, text: string): Promise<void> {
         + "/key again if it leaks, /unlink to revoke it entirely.");
       return;
     }
+    /**
+     * Following a wallet by name rather than by score.
+     *
+     * The cap is read from the tier at the moment of asking, so a holder who sells keeps the wallets
+     * they already had and simply cannot add more. Taking them away on a sell would mean deleting a
+     * reader's list on a balance reading, and a list is the one thing here that took work to build.
+     */
+    case "/follow": {
+      const a = (rest[0] ?? "").trim().toLowerCase();
+      if (!a) {
+        await send(chatId, "give the creator's address off a card, e.g. <code>/follow 0x…</code>");
+        return;
+      }
+      if (!isAddress(a)) {
+        await send(chatId, "that does not look like a wallet address.");
+        return;
+      }
+      const cap = FOLLOW_CAP[tierOf(db, chatId)];
+      const res = follow(db, chatId, a, Math.floor(Date.now() / 1000), cap);
+      if (res.ok) {
+        await send(chatId, followedText(db, a, res.count, cap));
+        return;
+      }
+      await send(chatId, res.reason === "already"
+        ? `already following <code>${a}</code>. /following lists them.`
+        : `that is ${cap} wallets, which is the limit for this tier. /unfollow one first`
+          + `${tiersConfigured() ? ", or hold $AUGUR: /link" : "."}`);
+      return;
+    }
+
+    case "/unfollow": {
+      const a = (rest[0] ?? "").trim().toLowerCase();
+      if (!isAddress(a)) {
+        await send(chatId, "give the address to stop following, e.g. <code>/unfollow 0x…</code>");
+        return;
+      }
+      await send(chatId, unfollow(db, chatId, a)
+        ? `no longer following <code>${a}</code>.`
+        : "not following that wallet.");
+      return;
+    }
+
+    case "/following":
+      await send(chatId, followingText(db, chatId, FOLLOW_CAP[tierOf(db, chatId)]));
+      return;
+
+    /**
+     * Watching a launch for arrivals.
+     *
+     * Tracking starts at the block it was asked at, and the block comes from the watcher's own
+     * heartbeat rather than from a fresh RPC read: the watcher is what keeps the curve current, so
+     * starting anywhere it has not reached would promise alerts for blocks nobody is reading.
+     */
+    case "/track": {
+      const t = (rest[0] ?? "").trim().toLowerCase();
+      if (!isAddress(t)) {
+        await send(chatId, "give the token address, e.g. <code>/track 0x…</code>");
+        return;
+      }
+      const cap = TRACK_CAP[tierOf(db, chatId)];
+      const res = track(db, chatId, t, headBlock(), Math.floor(Date.now() / 1000), cap);
+      if (res.ok) {
+        await send(chatId, trackedText(db, t, res.count, cap), linksFor(t));
+        return;
+      }
+      await send(chatId, {
+        already: "already watching that one. /tracking lists them.",
+        full: `that is ${cap} launches, which is the limit for this tier. /untrack one first`
+          + `${tiersConfigured() ? ", or hold $AUGUR: /link" : "."}`,
+        unknown: "not in the database. It may predate the backfill, or not be a pons launch.",
+        closed: "that launch has already reached the pool, so its curve has stopped trading. "
+          + "This watches curves, which is where the first minutes happen.",
+      }[res.reason]);
+      return;
+    }
+
+    case "/untrack": {
+      const t = (rest[0] ?? "").trim().toLowerCase();
+      if (!isAddress(t)) {
+        await send(chatId, "give the token address, e.g. <code>/untrack 0x…</code>");
+        return;
+      }
+      await send(chatId, untrack(db, chatId, t) ? "no longer watching it." : "not watching that one.");
+      return;
+    }
+
+    case "/tracking":
+      await send(chatId, trackingText(db, chatId, TRACK_CAP[tierOf(db, chatId)]));
+      return;
+
+    case "/trader": {
+      const a = (rest[0] ?? "").trim().toLowerCase();
+      if (!a) {
+        await send(chatId, "give a wallet address, e.g. <code>/trader 0x…</code>");
+        return;
+      }
+      await send(chatId, traderText(db, a), isAddress(a) ? [{ text: "The wallet", url: EXPLORER.address(a) }] : undefined);
+      return;
+    }
+
     case "/stop":
       db.prepare("DELETE FROM tg_subs WHERE chat_id = ?").run(chatId);
       db.prepare("DELETE FROM tg_sent WHERE chat_id = ?").run(chatId);
+      // The followed wallets and the watched launches go too. Without these lines a chat that was
+      // told its record is deleted would keep getting the two kinds of alert that do not come from
+      // tg_subs at all.
+      db.prepare("DELETE FROM tg_follows WHERE chat_id = ?").run(chatId);
+      db.prepare("DELETE FROM tg_tracks WHERE chat_id = ?").run(chatId);
+      db.prepare("DELETE FROM tg_trader_sent WHERE chat_id = ?").run(chatId);
       await send(chatId, "stopped, and your record here is deleted. /start begins again.");
       return;
     case "/status":
@@ -465,6 +583,157 @@ async function alertPass(): Promise<number> {
   return sent;
 }
 
+/**
+ * The pass that goes out on a wallet rather than on a number.
+ *
+ * A followed wallet's launch is sent whatever it scored, and without waiting for a score to exist:
+ * the reader asked about this wallet, and half of all graduations happen inside two minutes, so
+ * holding their alert back until the model has an opinion would spend the part they asked for.
+ *
+ * The window is ten minutes wide and the same rows are looked at again on the next pass, because a
+ * launch arrives carrying only the deployer the event named — the wallet that actually sent the
+ * transaction is filled in a few seconds later, when the watcher reads it. Looking once would miss
+ * every launch made through a contract, which is a sixth of them. `tg_sent` is what makes a second
+ * look free: it is the same table the scored alerts dedupe against, so a launch already sent for one
+ * reason is never sent again for the other.
+ */
+const FOLLOW_WINDOW_SEC = 600;
+
+async function followPass(): Promise<number> {
+  const chats = followingChats(db);
+  if (!chats.length) return 0;
+  const rows = recentLaunches(db, Math.floor(Date.now() / 1000) - FOLLOW_WINDOW_SEC);
+  if (!rows.length) return 0;
+
+  let sent = 0;
+  for (const chatId of chats) {
+    const set = followSet(db, chatId);
+    for (const row of rows) {
+      const who = followedBy(row, set);
+      if (who === null) continue;
+      if (already.get(chatId, row.token)) continue;
+      mark.run(chatId, row.token, Math.floor(Date.now() / 1000));
+      if (await send(chatId, followAlert(db, row, who), linksFor(row.token))) sent++;
+      await sleep(1100);
+    }
+  }
+  return sent;
+}
+
+/**
+ * The block watching starts from.
+ *
+ * Taken from the watcher's heartbeat rather than from an RPC call of our own. The watcher is what
+ * keeps the chain current here, so its head is the honest answer to "what has been seen"; asking the
+ * endpoint directly would hand out a block nobody has read yet and quietly promise alerts for the
+ * gap. With no watcher running at all, the highest launch on record is the last block we can claim
+ * to know about.
+ */
+const headBlock = (): number => {
+  const beat = Number(getMeta(db, "live_head_block") ?? 0);
+  if (beat > 0) return beat;
+  return (db.prepare("SELECT coalesce(max(block),0) b FROM launches").get() as { b: number }).b;
+};
+
+/**
+ * The pass that reads curves, for the launches somebody is holding.
+ *
+ * This is the only work the bot does that the watcher has not already done. Curve trades live on
+ * each curve's own address and are read per token, so every watched launch is one `eth_getLogs` per
+ * pass: the cost is the list, which is why the list is capped and why a long one is read round-robin
+ * rather than all at once. Twenty seconds between passes is chosen against what the alert is for —
+ * a wallet arriving is worth knowing within the minute, and is not worth a request per second.
+ *
+ * A record is computed once per wallet and kept for five minutes. It reads that wallet's whole
+ * history out of the trades table, which is affordable per arrival and not per pass.
+ */
+const TRADER_INTERVAL_MS = 20_000;
+const TOKENS_PER_PASS = 12;
+const ALERTS_PER_CHAT_PER_PASS = 3;
+const RECORD_TTL_MS = 5 * 60_000;
+
+const recordCache = new Map<string, { at: number; rec: TraderRecord }>();
+
+function recordFor(address: string, base: ReturnType<typeof readBaseRate>, except: string): TraderRecord {
+  const key = address + except;
+  const hit = recordCache.get(key);
+  if (hit && Date.now() - hit.at < RECORD_TTL_MS) return hit.rec;
+  // Emptied wholesale rather than evicted one by one. This process is meant to run for weeks, every
+  // buyer on every watched curve passes through here, and an entry older than the window is worth
+  // nothing anyway; a cache that only grows is a slow leak in the one process that never restarts.
+  if (recordCache.size > 500) recordCache.clear();
+  const rec = traderRecord(db, address, base, except);
+  recordCache.set(key, { at: Date.now(), rec });
+  return rec;
+}
+
+const readTo = (token: string): number =>
+  ((db.prepare("SELECT to_block FROM curve_indexed WHERE token = ?").get(token) as
+    { to_block: number } | undefined)?.to_block ?? 0);
+
+let tokenCursor = 0;
+
+async function traderPass(): Promise<number> {
+  const tokens = trackedTokens(db);
+  if (!tokens.length) return 0;
+  const head = headBlock();
+  if (head <= 0) return 0;
+
+  // Round-robin, so a list longer than one pass is read slower rather than not at all.
+  const ordered = [...tokens.slice(tokenCursor), ...tokens.slice(0, tokenCursor)];
+  const slice = ordered.slice(0, TOKENS_PER_PASS);
+  tokenCursor = (tokenCursor + slice.length) % tokens.length;
+
+  const base = readBaseRate(db);
+  let sent = 0;
+
+  for (const t of slice) {
+    // A graduated launch has stopped trading on its curve, so watching it is watching nothing. Said
+    // out loud rather than left to go quiet: silence is what a broken watcher looks like too.
+    if (t.graduated) {
+      const sym = (db.prepare("SELECT symbol FROM launches WHERE token = ?").get(t.token) as
+        { symbol: string | null } | undefined)?.symbol;
+      for (const chatId of retireGraduated(db, t.token)) {
+        await send(chatId, `<b>${esc(sym ?? t.token)}</b> reached the pool, so its curve has stopped trading `
+          + "and I have stopped watching it. Trading carries on in the pool, which this does not read.");
+        await sleep(1100);
+      }
+      continue;
+    }
+
+    const from = Math.max(readTo(t.token) + 1, t.block);
+    if (from > head) continue;
+    try {
+      await indexCurve(db, t.token, t.curve, from, Math.min(head, from + CFG.logsChunk));
+    } catch {
+      continue; // a bad minute on the log endpoint is not a reason to end the pass
+    }
+
+    for (const w of watchersOf(db, t.token)) {
+      let toldThisPass = 0;
+      for (const buyer of newBuyers(db, w.chat_id, t.token, w.from_block)) {
+        if (toldThisPass >= ALERTS_PER_CHAT_PER_PASS) break;
+        // Somebody's own buy is not an arrival, and telling a holder about themselves is the fastest
+        // way to teach them the alert is noise.
+        if (linkOf(db, w.chat_id)?.address === buyer.address) continue;
+        const rec = recordFor(buyer.address, base, t.token);
+        // Marked whether or not it qualifies: a wallet with no record is not news this time and will
+        // not be news on the next pass either, and re-judging every buyer forever is how a cheap
+        // pass becomes an expensive one.
+        markTraderSent(db, w.chat_id, t.token, buyer.address, Math.floor(Date.now() / 1000));
+        if (!rec.qualifies) continue;
+        if (await send(w.chat_id, traderAlert(db, t.token, buyer, rec), [
+          { text: "The wallet", url: EXPLORER.address(buyer.address) },
+          ...linksFor(t.token).slice(0, 2),
+        ])) sent++;
+        toldThisPass++;
+        await sleep(1100);
+      }
+    }
+  }
+  return sent;
+}
+
 /* ── run ────────────────────────────────────────────────────────────────────── */
 
 const me = await tg<{ username: string }>("getMe");
@@ -484,6 +753,13 @@ await tg("setMyCommands", {
     { command: "watch", description: "only alert me at or above n%, e.g. /watch 8" },
     { command: "top", description: "strongest launches on the board right now" },
     { command: "token", description: "everything known about one launch: /token 0x…" },
+    { command: "follow", description: "tell me the second this wallet launches again: /follow 0x…" },
+    { command: "following", description: "the wallets I follow, and what each has done" },
+    { command: "unfollow", description: "stop following one: /unfollow 0x…" },
+    { command: "track", description: "watch a launch I hold for arrivals: /track 0x…" },
+    { command: "tracking", description: "the launches I am watching, and who has been named" },
+    { command: "untrack", description: "stop watching one: /untrack 0x…" },
+    { command: "trader", description: "what a wallet's record is, and what was thrown out: /trader 0x…" },
     { command: "status", description: "is the watcher keeping up, how old is the model, what is my tier" },
     { command: "link", description: "prove a wallet — no gas, no key, nothing moved" },
     { command: "verify", description: "finish /link with the signature: /verify 0x…" },
@@ -501,7 +777,7 @@ console.log(`  ${(db.prepare("SELECT count(*) c FROM tg_subs").get() as { c: num
 console.log(`  send /start to @${me.username} to subscribe this machine's alerts to a chat\n`);
 
 if (ONCE) {
-  console.log(`sent ${await claimsPass() + await alertPass()} alert(s)`);
+  console.log(`sent ${await claimsPass() + await alertPass() + await followPass() + await traderPass()} alert(s)`);
   db.close();
   process.exit(0);
 }
@@ -566,6 +842,7 @@ const claimCount = (): number =>
 let seen = claimCount();
 let lastFull = 0;
 let lastSweep = 0;
+let lastTrade = 0;
 for (;;) {
   try {
     await announceLinks();
@@ -576,13 +853,21 @@ for (;;) {
     const n = claimCount();
     if (n !== seen) {
       seen = n;
-      const sent = await claimsPass();
+      const sent = await claimsPass() + await followPass();
       if (sent) console.log(`${new Date().toISOString().slice(11, 19)}  sent ${sent} alert(s)`);
     }
     if (Date.now() - lastFull >= INTERVAL_SEC * 1000) {
       lastFull = Date.now();
-      const sent = await alertPass();
+      // The follow pass runs here too, not only when a claim was written: a launch the watcher
+      // scored too late to log never moves the claim count, and a followed wallet's launch is one
+      // the reader wants whether or not it earned a row in the log.
+      const sent = await alertPass() + await followPass();
       if (sent) console.log(`${new Date().toISOString().slice(11, 19)}  sent ${sent} alert(s) on the full pass`);
+    }
+    if (Date.now() - lastTrade >= TRADER_INTERVAL_MS) {
+      lastTrade = Date.now();
+      const named = await traderPass();
+      if (named) console.log(`${new Date().toISOString().slice(11, 19)}  named ${named} trader(s) on watched launches`);
     }
   } catch (e) {
     console.error(`alert pass failed: ${(e as Error).message}`);

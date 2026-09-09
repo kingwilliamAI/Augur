@@ -35,7 +35,8 @@
     "telegram": "node --no-warnings src/cli/telegram.ts",
     "backtest": "node --no-warnings src/cli/backtest.ts",
     "patterns": "node --no-warnings src/cli/patterns.ts",
-    "early": "node --no-warnings src/cli/early.ts"
+    "early": "node --no-warnings src/cli/early.ts",
+    "fees": "node --no-warnings src/cli/fees.ts"
   },
   "dependencies": {
     "viem": "^2.56.3"

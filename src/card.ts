@@ -130,9 +130,25 @@ export type Card = {
  */
 export type PastPeak = { token: string; symbol: string | null; ts: number; graduated: boolean; multiple: number; usd: string | null; url: string };
 
-function topPeaks(db: DB, deployer: string, beforeBlock: number, limit: number): PastPeak[] {
+/**
+ * Which column an address is looked for in.
+ *
+ * A card knows the deployer the event named and asks about that. Somebody typing an address into the
+ * bot read it off a card, where the wallet on show is `launch_sender`, so a follow has to match
+ * either column or it would silently never fire for the sixth of launches sent through a contract.
+ */
+type Match = "deployer" | "wallet";
+
+const minedBy = (match: Match): string =>
+  match === "deployer" ? "deployer = ?" : "(deployer = ? OR launch_sender = ?)";
+
+const minedArgs = (match: Match, address: string): string[] =>
+  match === "deployer" ? [address] : [address, address];
+
+function topPeaks(db: DB, address: string, beforeBlock: number, limit: number, match: Match = "deployer"): PastPeak[] {
+  const args = minedArgs(match, address);
   const rows = db.prepare(`
-    WITH mine AS (SELECT token FROM launches WHERE deployer = ? AND block < ?),
+    WITH mine AS (SELECT token FROM launches WHERE ${minedBy(match)} AND block < ?),
     p AS (
       SELECT c.token, CAST(c.quote_wei AS REAL) / CAST(c.token_amt AS REAL) px,
              row_number() OVER (PARTITION BY c.token ORDER BY c.block, c.log_index) rn
@@ -153,7 +169,7 @@ function topPeaks(db: DB, deployer: string, beforeBlock: number, limit: number):
     SELECT a.token, l.symbol, l.ts, l.pair_token, (g.token IS NOT NULL) graduated,
            a.peak, a.first
     FROM agg a JOIN launches l ON l.token = a.token
-    LEFT JOIN graduations g ON g.token = a.token`).all(deployer, beforeBlock) as
+    LEFT JOIN graduations g ON g.token = a.token`).all(...args, beforeBlock) as
     Array<{ token: string; symbol: string | null; ts: number; pair_token: string; graduated: number; peak: number | null; first: number | null }>;
 
   /**
@@ -173,7 +189,7 @@ function topPeaks(db: DB, deployer: string, beforeBlock: number, limit: number):
   for (const r of db.prepare(`
     SELECT l.token, l.symbol, l.ts, l.pair_token
     FROM pool_peaks k JOIN pools p ON p.pool_id = k.pool_id JOIN launches l ON l.token = p.token
-    WHERE l.deployer = ? AND l.block < ?`).all(deployer, beforeBlock) as
+    WHERE ${minedBy(match).replace(/(deployer|launch_sender)/g, "l.$1")} AND l.block < ?`).all(...args, beforeBlock) as
     Array<{ token: string; symbol: string | null; ts: number; pair_token: string }>) {
     if (seen.has(r.token)) continue;
     rows.push({ ...r, graduated: 1, peak: null, first: null });
@@ -209,6 +225,18 @@ function topPeaks(db: DB, deployer: string, beforeBlock: number, limit: number):
     .sort((a, b) => (b.cap ?? -1) - (a.cap ?? -1) || b.multiple - a.multiple)
     .slice(0, limit)
     .map(({ cap: _cap, ...rest }) => rest);
+}
+
+/**
+ * The same ranking for a wallet rather than for one launch's creator: everything it has ever sent
+ * or been named the deployer of, with no block to stop at.
+ *
+ * A card asks "what had this creator done before this launch", because a fact that arrived later
+ * cannot have informed a score written earlier. A follow asks "what has this wallet done", and the
+ * answer should include the launch that made somebody want to follow it.
+ */
+export function walletPeaks(db: DB, wallet: string, limit = 3): PastPeak[] {
+  return topPeaks(db, wallet.toLowerCase(), Number.MAX_SAFE_INTEGER, limit, "wallet");
 }
 
 const ZERO = "0x0000000000000000000000000000000000000000";
