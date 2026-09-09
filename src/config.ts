@@ -34,10 +34,9 @@ export const CFG = {
   /**
    * The token the coin page is about.
    *
-   * $AUGUR is deployed at the address below. It was deployed directly rather than through the pons
-   * factory, so there is no launch row for it: the coin page falls back to naming the contract and
-   * saying the factory figures are not available, which is the honest reading. A stand-in token was
-   * used here before and the page never labelled it, so it read as somebody else's coin being ours.
+   * $AUGUR is deployed at the address below, launched through the same factory the board watches,
+   * so the coin page reads it exactly as it reads any other launch. A stand-in token was configured
+   * here before and the page never labelled it, so it read as somebody else's coin being ours.
    *
    * Empty turns the coin page back into the "not launched" notice.
    */

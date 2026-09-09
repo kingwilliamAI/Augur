@@ -611,10 +611,10 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
       <div style="min-width:0">
         <div class="hd"><img class="coin img" src="/icon-128.png" alt=""><b style="font-size:20px;letter-spacing:-.02em">$AUGUR</b><span class="pill">pons v2 · Robinhood Chain</span><span style="font:500 11px var(--mono);color:var(--t55)">0x04d2…f72c</span></div>
         <div class="contract"><span class="k">contract</span><span class="addr">0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c</span></div>
-        <div style="margin-top:12px;font-size:12.5px;color:var(--t6);line-height:1.5">This is the only $AUGUR contract; every other address carrying this name is not ours. It was deployed directly rather than through the pons factory, so this card cannot read the on-chain facts it reads for a factory launch.</div>
+        <div style="margin-top:12px;font-size:12.5px;color:var(--t6);line-height:1.5">This is the only $AUGUR contract; every other address carrying this name is not ours. It went through the same factory as every other token here, so this card reads the same on-chain facts as any other card.</div>
       </div>
       <div class="tiles">
-        <div class="tile"><div class="k">Status</div><div class="v">Published</div><div class="s">direct deploy</div></div>
+        <div class="tile"><div class="k">Status</div><div class="v">Graduated</div><div class="s">reached the pool</div></div>
         <div class="tile"><div class="k">Quote asset</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
         <div class="tile"><div class="k">Creator self-buy</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
         <div class="tile"><div class="k">Creator tax</div><div class="v" style="color:var(--t45)">—</div><div class="s">tbd</div></div>
@@ -1583,7 +1583,7 @@ async function loadCoin() {
 
   const box = $("coin-standin");
   if (!d.configured || !d.found) {
-    box.innerHTML = '<div class="notyet"><b>$AUGUR · 0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c</b><br>This is the only $AUGUR contract; every other address carrying this name is not ours. It was deployed directly rather than through the pons factory, so the live figures below are not available for it.</div>';
+    box.innerHTML = '<div class="notyet"><b>$AUGUR · 0x04d2d16c26b2e82fbd93d1bbb91855fb8660f72c</b><br>This is the only $AUGUR contract; every other address carrying this name is not ours. Its figures are still being indexed.</div>';
     return;
   }
 

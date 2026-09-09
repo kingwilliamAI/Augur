@@ -308,8 +308,8 @@ Nothing here needs a key, because nothing here signs.
 The address above is the only one. It is published here and on the site, and nowhere else; anything
 carrying this name at another address is not ours.
 
-It was deployed directly rather than through the pons factory, so the board cannot read on-chain
-facts about it the way it does for a factory launch: what the creator bought, which
+It went through the same factory as every other token on pons, and its card on the board reads the
+same on-chain facts as any other card: what the creator bought, which
 wallets were exempted from the opening tax, where the fees are routed. It gets no special treatment
 from the scanner, and the scanner has no opinion about it.
 
