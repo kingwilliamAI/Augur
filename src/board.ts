@@ -11,6 +11,10 @@ import { normaliseName } from "./features.ts";
 import { formatUnits, quoteFromCache } from "./quote.ts";
 import { formatUsd, marketCapUsd, usdOf } from "./prices.ts";
 import { claimChallenge, keyHolder, tierCounts, tiersConfigured, verifyByToken } from "./tiers.ts";
+import { creatorRecord, followCounts } from "./follow.ts";
+import { leaderboard, recordOf, traderCounts } from "./traders.ts";
+import { fundingCounts } from "./fundings.ts";
+import { preview, rankedAtLaunch } from "./preview.ts";
 import { BLOCKS_PER_DAY } from "./config.ts";
 import { CFG } from "./config.ts";
 import { indexCurve } from "./curve.ts";
@@ -331,6 +335,9 @@ function stats(): Record<string, unknown> {
     validatedAt: validation?.at ?? null,
     // The paid half, reported on the page it pays for rather than only in a database nobody reads.
     tiers: { configured: tiersConfigured(), ...tierCounts(db) },
+    follows: followCounts(db),
+    traders: traderCounts(db),
+    fundings: fundingCounts(db),
   };
   statsCache = { at: Date.now(), body };
   return body;
@@ -479,7 +486,24 @@ async function readJson(req: import("node:http").IncomingMessage): Promise<Recor
   }
 }
 
-const server = createServer(async (req, res) => {
+/**
+ * Every request, inside one net.
+ *
+ * The handler is async, and an async handler that throws becomes an unhandled rejection, which since
+ * Node 15 ends the process. So any single unguarded dereference anywhere below was a way for one
+ * request to take the whole board down, and one of them was reachable by an unauthenticated POST of
+ * arbitrary JSON. The endpoints validate their own input, and this is what makes a miss survivable
+ * rather than fatal.
+ */
+const server = createServer((req, res) => {
+  void handle(req, res).catch((e) => {
+    console.error(`unhandled while serving ${req.method} ${req.url}: ${(e as Error).message}`);
+    if (!res.headersSent) json(res, { error: "the board could not answer that" }, 500);
+    else res.end();
+  });
+});
+
+async function handle(req: import("node:http").IncomingMessage, res: import("node:http").ServerResponse): Promise<void> {
   const url = new URL(req.url ?? "/", `http://localhost:${CFG.boardPort}`);
 
   if (url.pathname.startsWith("/api/") && overLimit(req, url)) {
@@ -550,6 +574,57 @@ const server = createServer(async (req, res) => {
     }
     const r = await verifyByToken(db, token, String(body.signature ?? ""), now);
     json(res, r.ok ? { ok: true, address: r.address } : { error: r.reason }, r.ok ? 200 : 400);
+    return;
+  }
+
+  /**
+   * The score a launch would get, before it exists.
+   *
+   * A POST rather than a GET because the answer depends on a dozen declared parameters, and a query
+   * string carrying a description and a socials list is a URL nobody can read or share meaningfully.
+   * Free, and deliberately so: the point of it is that somebody about to spend money on a deploy can
+   * see what the model thinks first, and putting that behind the paid half would make the tool a
+   * toll on exactly the people it is for.
+   */
+  if (url.pathname === "/api/preview") {
+    if (req.method !== "POST") { json(res, { error: "post only" }, 405); return; }
+    const body = await readJson(req);
+    if (!body) { json(res, { error: "expected a small JSON body" }, 400); return; }
+    model = loadModel();
+    if (!model) { json(res, { error: "no model on this instance yet" }, 503); return; }
+    const out = preview(db, model, body as Parameters<typeof preview>[2]);
+    json(res, out, "error" in out ? 400 : 200);
+    return;
+  }
+
+  /** Where one launch ranked in its own hour, read back from the claim the watcher wrote. */
+  if (url.pathname.startsWith("/api/ranked/")) {
+    const token = url.pathname.slice("/api/ranked/".length).toLowerCase();
+    const r = ADDRESS.test(token) ? rankedAtLaunch(db, token) : null;
+    if (!r) { json(res, { error: "no claim was recorded for that launch" }, 404); return; }
+    json(res, r);
+    return;
+  }
+
+  /**
+   * Wallets with a record, and one wallet's record.
+   *
+   * Free to read. The ranking is computed from public chain data and the method is in the repository,
+   * so putting the list behind the paid half would be charging for arithmetic anybody can redo. What
+   * holding buys is being told the moment one of them moves, not the ability to look them up.
+   */
+  if (url.pathname === "/api/traders") {
+    const days = Math.min(Math.max(Number(url.searchParams.get("days") ?? 30), 1), 365);
+    const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 50), 1), 200);
+    const since = Math.floor(Date.now() / 1000) - days * 86400;
+    json(res, { days, minClosed: CFG.traderMinClosed, traders: leaderboard(db, { since, limit }) });
+    return;
+  }
+
+  if (url.pathname.startsWith("/api/trader/")) {
+    const w = url.pathname.slice("/api/trader/".length).toLowerCase();
+    if (!ADDRESS.test(w)) { json(res, { error: "that is not a wallet" }, 400); return; }
+    json(res, { wallet: w, record: recordOf(db, w), creator: creatorRecord(db, w) });
     return;
   }
 
@@ -1021,7 +1096,7 @@ const server = createServer(async (req, res) => {
   }
 
   res.writeHead(404).end("not found");
-});
+}
 
 server.listen(CFG.boardPort, CFG.boardHost, () => {
   console.log(`augur board on http://${CFG.boardHost}:${CFG.boardPort}`);

@@ -6,7 +6,10 @@ import { formatUsd, startingCapUsd } from "./prices.ts";
 import { quoteFromCache } from "./quote.ts";
 import { loadModel, scoreOne, scoreRecent, type Scored } from "./score.ts";
 import { modelId } from "./track.ts";
-import { linkOf, pendingRestore, streakDays, tiersConfigured } from "./tiers.ts";
+import { creatorRecord, following, followLimit } from "./follow.ts";
+import { rankedAtLaunch } from "./preview.ts";
+import { recordOf, watchedBy, type TraderHit } from "./traders.ts";
+import { linkOf, pendingRestore, streakDays, tierOf, tiersConfigured } from "./tiers.ts";
 
 /**
  * What the bot says, kept apart from how it says it.
@@ -185,6 +188,19 @@ export function alertText(db: DB, s: Scored, m: LaunchMeta, now = Math.floor(Dat
     rows.push(["creator", H.priorLaunches === 0
       ? "first launch"
       : `${H.priorLaunches} before, ${H.priorGraduations} graduated`]);
+
+    // Where the money came from, when anybody was watching. Phrased so it cannot be read as a
+    // signal: it is 2.7% of transfers that precede a launch, and those launches reach a pool
+    // slightly less often than launches in general do.
+    const O = card.origin;
+    if (O) {
+      rows.push(["funded", `${O.eth} ETH ${ago(O.secondsBefore)} before the launch`
+        + (O.fresh === true ? ", into a wallet with no history" : "")]);
+      if (O.fanIn) rows.push(["funded by", `${O.fanIn.funders} addresses, ${O.fanIn.eth} ETH in the hour before`]);
+      else if (O.funderFedLaunchers > 0) {
+        rows.push(["that funder", `has fed ${O.funderFedLaunchers} other wallet${O.funderFedLaunchers === 1 ? "" : "s"} that launched`]);
+      }
+    }
     if (H.bestPeak) {
       rows.push(["their best", `${H.bestPeak.usd ?? `×${H.bestPeak.multiple.toFixed(1)}`}${H.bestPeak.symbol ? ` (${H.bestPeak.symbol})` : ""}`]);
     }
@@ -295,6 +311,163 @@ export function tierText(db: DB, chatId: number, now = Math.floor(Date.now() / 1
     lines.push(`${CFG.tier2Tokens.toLocaleString()} $AUGUR takes the history export from 7 days to 30`);
   }
   return lines.join("\n");
+}
+
+/**
+ * The alert for a launch by somebody a chat asked to be told about.
+ *
+ * Deliberately not the score alert with a different header. A reader following a creator has already
+ * decided this wallet is worth their attention, so what they need is what the wallet has done before,
+ * not a percentage they could get from the board. The score goes in only when the watcher has
+ * actually written one, and it is one line rather than the whole forecast.
+ */
+export function followText(
+  db: DB, token: string, address: string, now = Math.floor(Date.now() / 1000),
+): string {
+  const meta = db.prepare("SELECT symbol, name, ts FROM launches WHERE token = ?")
+    .get(token) as { symbol: string | null; name: string | null; ts: number } | undefined;
+  // Excluding this launch: an alert that counts the token it is announcing is a mirror, not a record.
+  const rec = creatorRecord(db, address, token);
+
+  const out = [
+    `<b>${esc(meta?.symbol ?? short(token))}</b>   just launched by a creator you follow`,
+    `<code>${short(address)}</code>${meta ? ` · ${ago(Math.max(0, now - meta.ts))} ago` : ""}`,
+  ];
+
+  const rows: Row[] = [
+    ["launched before", rec.launches === 0 ? "this is their first" : `${rec.launches.toLocaleString()}`],
+    ["reached the pool", rec.launches === 0 ? "—" : rec.graduations === 0
+      ? "none of them"
+      : `${rec.graduations} of ${rec.launches}`],
+  ];
+  // The best peak is what a follow is really for: a creator with one launch and no history is a
+  // different proposition from one whose last token did seven figures, and the number says which.
+  if (rec.bestUsd !== null) {
+    rows.push(["their best", `${formatUsd(rec.bestUsd)}${rec.bestSymbol ? ` · ${esc(rec.bestSymbol)}` : ""}`]);
+  }
+
+  const claim = db.prepare("SELECT probability, rank, of FROM predictions WHERE token = ?")
+    .get(token) as { probability: number; rank: number; of: number } | undefined;
+  if (claim) rows.push(["scored", `${(claim.probability * 100).toFixed(1)}% · #${claim.rank} of ${claim.of.toLocaleString()}`]);
+
+  out.push("", table(rows));
+  return out.join("\n");
+}
+
+/**
+ * The alert a creator gets about their own launch.
+ *
+ * Where it ranked, rather than what it scores. A creator who just deployed knows what they built;
+ * what they cannot see is the hour they landed in, and that is the whole content of this message.
+ * The number comes from the claim the watcher wrote before any outcome existed, so what they are
+ * told is what was recorded rather than a fresh opinion that may have drifted.
+ */
+export function ownLaunchText(db: DB, token: string, now = Math.floor(Date.now() / 1000)): string {
+  const meta = db.prepare("SELECT symbol, ts FROM launches WHERE token = ?")
+    .get(token) as { symbol: string | null; ts: number } | undefined;
+  const r = rankedAtLaunch(db, token);
+
+  const head = `<b>${esc(meta?.symbol ?? short(token))}</b>   your launch is live`;
+  if (!r) {
+    return [head, `<code>${short(token)}</code>`, "",
+      "no score recorded yet. The watcher writes one within seconds of the block; /token will have it.",
+    ].join("\n");
+  }
+  const rows: Row[] = [
+    ["scored", `${(r.probability * 100).toFixed(1)}%`],
+    ["ranked", `#${r.rank} of ${r.of.toLocaleString()} scored in the ${r.windowHours}h around it`],
+    ["better than", `${r.betterThanPct.toFixed(0)}% of them`],
+  ];
+  return [head, `<code>${short(token)}</code> · ${ago(Math.max(0, now - (meta?.ts ?? now)))} ago`, "",
+    table(rows), "",
+    "<i>A rank is not a forecast of profit. The backtest in the repository says following the score does not pay.</i>",
+  ].join("\n");
+}
+
+/** The list behind /following, and what it would take to add another. */
+export function followingText(db: DB, chatId: number): string {
+  const list = following(db, chatId);
+  const limit = followLimit(tierOf(db, chatId));
+  if (limit <= 0) {
+    return "following a creator is part of the paid half. <code>/link</code> proves a wallet, and "
+      + "holding opens it. Nothing else about the bot changes.";
+  }
+  if (!list.length) {
+    return `not following anyone. <code>/follow 0x…</code> with a creator's address, and you hear `
+      + `about their next launch seconds after the block. Room for ${limit === Infinity ? "as many as you like" : limit}.`;
+  }
+  const lines = list.map((a) => {
+    const r = creatorRecord(db, a);
+    const best = r.bestUsd !== null ? ` · best ${formatUsd(r.bestUsd)}` : "";
+    return `<code>${short(a)}</code>  ${r.launches} launched, ${r.graduations} graduated${best}`;
+  });
+  const room = limit === Infinity ? "" : `\n\n${list.length} of ${limit} used.`;
+  return [`Following ${list.length}:`, "", ...lines].join("\n") + room;
+}
+
+/**
+ * A wallet with a record buying into something somebody is watching.
+ *
+ * Says what the record is made of rather than calling anybody good. Eight closed positions is not a
+ * sample anybody should bet on, and the message carries the count so a reader can discount it. There
+ * is no recommendation here and the last line says so, because a message like this is exactly the
+ * kind that gets screenshotted without its caveats.
+ */
+export function traderText(db: DB, hit: TraderHit, now = Math.floor(Date.now() / 1000)): string {
+  const meta = db.prepare("SELECT symbol FROM launches WHERE token = ?")
+    .get(hit.token) as { symbol: string | null } | undefined;
+  const r = hit.record;
+  const rows: Row[] = [
+    ["bought", `${hit.quote.toLocaleString(undefined, { maximumFractionDigits: 4 })} ${esc(hit.quoteSymbol)}`],
+    ["their record", `${r.closed} positions closed, ${(100 * r.winRate).toFixed(0)}% of them up`],
+    ["realised", formatUsd(r.realisedUsd)],
+    ["best single", `${r.bestMultiple.toFixed(1)}x`],
+  ];
+  return [
+    `<b>${esc(meta?.symbol ?? short(hit.token))}</b>   a wallet with a record just bought in`,
+    `<code>${short(hit.wallet)}</code> · ${ago(Math.max(0, now - hit.ts))} ago`,
+    "",
+    table(rows),
+    "",
+    "<i>A record is not a forecast. It counts only closed positions in tokens this wallet neither "
+    + "created nor was waived the opening tax on, and it is still a small sample.</i>",
+  ].join("\n");
+}
+
+/** The tokens a chat is watching, and what it would take to add one. */
+export function holdingsText(db: DB, chatId: number): string {
+  const list = watchedBy(db, chatId);
+  if (!list.length) {
+    return "not watching any tokens. <code>/hold 0x…</code> adds one, and you hear when a wallet with "
+      + "a record buys into it.";
+  }
+  const nameOf = db.prepare("SELECT symbol FROM launches WHERE token = ?");
+  const lines = list.map((t) => {
+    const m = nameOf.get(t) as { symbol: string | null } | undefined;
+    return `<code>${short(t)}</code>  ${esc(m?.symbol ?? "not indexed yet")}`;
+  });
+  return [`Watching ${list.length}:`, "", ...lines, "", "<code>/unhold 0x…</code> removes one."].join("\n");
+}
+
+/** One wallet's trading record, for /trader. */
+export function traderRecordText(db: DB, wallet: string): string {
+  const r = recordOf(db, wallet);
+  if (!r) {
+    return `<code>${short(wallet)}</code> has no closed positions on record in tokens it did not `
+      + "create. That is not a judgement: most wallets never close enough to have one.";
+  }
+  return [
+    `<code>${short(wallet)}</code>`,
+    "",
+    table([
+      ["closed", `${r.closed} positions`],
+      ["up", `${r.wins} of them, ${(100 * r.winRate).toFixed(0)}%`],
+      ["realised", formatUsd(r.realisedUsd)],
+      ["best single", `${r.bestMultiple.toFixed(1)}x`],
+    ]),
+    "",
+    "<i>Own launches and tokens where the opening tax was waived for this wallet are excluded.</i>",
+  ].join("\n");
 }
 
 export function topText(db: DB, windowHours: number, limit = 5): string {

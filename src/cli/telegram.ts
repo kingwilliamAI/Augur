@@ -6,7 +6,16 @@ import { ADDR, CFG, EXPLORER } from "../config.ts";
 import { openDb, type DB } from "../db.ts";
 import { loadModel, scoreRecent, type Scored } from "../score.ts";
 import { claimsFor } from "../alerts.ts";
-import { alertText, HELP, statusText, tierText, tokenText, topText, type LaunchMeta } from "../tgtext.ts";
+import {
+  alertText, followingText, followText, HELP, holdingsText, ownLaunchText, statusText, tierText,
+  tokenText, topText, traderRecordText, traderText, type LaunchMeta,
+} from "../tgtext.ts";
+import {
+  follow, following, followLimit, markFollowSent, pendingFollowAlerts, unfollow,
+} from "../follow.ts";
+import {
+  markTraderSent, pendingTraderAlerts, unwatchToken, watchedBy, watchToken,
+} from "../traders.ts";
 import {
   applyBalance, challenge, CHALLENGE_TTL_SEC, effectiveMin, gateFor, issueKey, linkOf,
   markAnnounced, ripeFor, tierOf, tiersConfigured, unannouncedLinks, unlink, verifyLink, type Tier,
@@ -232,6 +241,9 @@ async function handle(chatId: number, text: string): Promise<void> {
       // The rest follows as its own message rather than being cut to fit.
       await sendBanner(chatId, "<b>Augur</b> · every pons v2 launch, scored the second it lands.");
       await send(chatId, `${HELP}\n\nAlerts are on at <b>${DEFAULT_MIN}%</b>. Change it with /watch.`);
+      // A deep link from the site arrives as /start with a payload. The site cannot talk to the bot,
+      // so this is how a "follow this creator" button there finishes its sentence here.
+      if (rest[0]?.startsWith("f_")) await handle(chatId, `/follow ${rest[0].slice(2)}`);
       return;
     case "/help":
       subscribe(chatId, DEFAULT_MIN);
@@ -342,10 +354,89 @@ async function handle(chatId: number, text: string): Promise<void> {
       return;
     }
     case "/stop":
-      db.prepare("DELETE FROM tg_subs WHERE chat_id = ?").run(chatId);
-      db.prepare("DELETE FROM tg_sent WHERE chat_id = ?").run(chatId);
-      await send(chatId, "stopped, and your record here is deleted. /start begins again.");
+      // Everything keyed on this chat, not just the alert subscription. A chat that asked to be
+      // forgotten and then kept getting follow alerts would be the bot ignoring the one command it
+      // most has to honour.
+      for (const t of ["tg_subs", "tg_sent", "follows", "tg_follow_sent", "tg_holdings", "tg_trader_sent"]) {
+        db.prepare(`DELETE FROM ${t} WHERE chat_id = ?`).run(chatId);
+      }
+      await send(chatId, "stopped, and your record here is deleted: alerts, follows, everything. "
+        + "/start begins again. A linked wallet is separate — /unlink forgets that.");
       return;
+    case "/follow": {
+      const res = follow(db, chatId, rest[0] ?? "", Math.floor(Date.now() / 1000));
+      if (res.ok) {
+        await send(chatId,
+          `following <code>${res.address}</code>. You hear about their next launch seconds after the block.`
+          + `\n\n${followingText(db, chatId)}`);
+        return;
+      }
+      const why = {
+        "bad-address": "give a creator's address, e.g. <code>/follow 0x1234…abcd</code>. "
+          + "It is the address a card calls the creator, not the token.",
+        "not-a-holder": "following a creator is part of the paid half. <code>/link</code> proves a "
+          + "wallet, and holding opens it.",
+        "already": "already following that one. <code>/following</code> lists them.",
+        "shared": `that address is a deployer ${res.senders ?? "many"} different people launch `
+          + "through, so following it would be a firehose rather than a subscription. Use the "
+          + "creator's own wallet: it is the address a card calls the creator.",
+        "limit": `that is the limit for your tier (${res.limit ?? 0}). `
+          + "<code>/unfollow 0x…</code> makes room, or a larger balance lifts the cap.",
+      }[res.reason];
+      await send(chatId, why);
+      return;
+    }
+
+    case "/unfollow": {
+      const gone = unfollow(db, chatId, rest[0] ?? "");
+      await send(chatId, gone
+        ? `stopped following <code>${(rest[0] ?? "").toLowerCase()}</code>.`
+        : "not following that address. <code>/following</code> lists the ones you are.");
+      return;
+    }
+
+    case "/following":
+      await send(chatId, followingText(db, chatId));
+      return;
+
+    case "/hold": {
+      const t = (rest[0] ?? "").trim().toLowerCase();
+      if (!watchToken(db, chatId, t, Math.floor(Date.now() / 1000))) {
+        await send(chatId, "give a token address, e.g. <code>/hold 0x1234…abcd</code>.");
+        return;
+      }
+      await send(chatId, `watching <code>${t}</code>. You hear when a wallet with a record buys in.`
+        + `\n\n${holdingsText(db, chatId)}`);
+      return;
+    }
+
+    case "/unhold":
+      unwatchToken(db, chatId, rest[0] ?? "");
+      await send(chatId, holdingsText(db, chatId));
+      return;
+
+    case "/holdings":
+      await send(chatId, holdingsText(db, chatId));
+      return;
+
+    case "/trader":
+      if (!/^0x[0-9a-f]{40}$/.test((rest[0] ?? "").toLowerCase())) {
+        await send(chatId, "give a wallet, e.g. <code>/trader 0x1234…abcd</code>.");
+        return;
+      }
+      await send(chatId, traderRecordText(db, rest[0].toLowerCase()));
+      return;
+
+    case "/preview":
+      await send(chatId,
+        "Paste the parameters before you deploy and get the same score the board would give the "
+        + "launch, with its three reasons and where it would rank this hour.\n\n"
+        + `${CFG.siteUrl}/#/preview\n\n`
+        + "<i>It is free, and it is not advice: the backtest in the repository says that following "
+        + "the score does not pay.</i>",
+        [{ text: "Score a launch", url: `${CFG.siteUrl}/#/preview` }]);
+      return;
+
     case "/status":
       await send(chatId, `${statusText(db)}\n\n${tierText(db, chatId)}`);
       return;
@@ -489,6 +580,14 @@ await tg("setMyCommands", {
     { command: "verify", description: "finish /link with the signature: /verify 0x…" },
     { command: "unlink", description: "forget the wallet, the tier and the API key" },
     { command: "key", description: "an API key for the board, once a linked wallet is holding" },
+    { command: "follow", description: "hear about a creator's next launch: /follow 0x…" },
+    { command: "unfollow", description: "stop following one: /unfollow 0x…" },
+    { command: "following", description: "the creators you follow, and their record" },
+    { command: "preview", description: "score a launch before you deploy it" },
+    { command: "hold", description: "watch a token: /hold 0x… — hear when a ranked wallet buys in" },
+    { command: "unhold", description: "stop watching one: /unhold 0x…" },
+    { command: "holdings", description: "the tokens you watch" },
+    { command: "trader", description: "one wallet's closed-position record: /trader 0x…" },
     { command: "help", description: "what the numbers mean" },
     { command: "stop", description: "no more alerts, and delete my record" },
   ],
@@ -509,6 +608,49 @@ if (ONCE) {
 process.on("SIGINT", () => { db.close(); process.exit(0); });
 
 void pollCommands();
+
+/**
+ * Launches by creators somebody asked to be told about.
+ *
+ * On the same fast tick as the score alerts, and for the same reason: the whole promise of following
+ * a creator is hearing about it while it is still new, and a pass on a thirty-second timer would make
+ * that a lie two times out of three.
+ *
+ * The watermark is generous on purpose. It looks back further than one tick, because the dedupe
+ * table is what actually prevents a repeat, and considering a launch twice costs a query while
+ * missing one costs the feature.
+ */
+async function followPass(): Promise<number> {
+  const now = Math.floor(Date.now() / 1000);
+  let sent = 0;
+  for (const hit of pendingFollowAlerts(db, now - FOLLOW_LOOKBACK_SEC)) {
+    // Marked before sending, like every other alert here: a message that fails is better skipped
+    // than repeated on every tick for the rest of the process's life.
+    markFollowSent(db, hit.chatId, hit.token, now);
+    const text = hit.own ? ownLaunchText(db, hit.token, now) : followText(db, hit.token, hit.address, now);
+    if (await send(hit.chatId, text, linksFor(hit.token))) sent++;
+    await sleep(1100);
+  }
+  return sent;
+}
+
+/**
+ * Wallets with a record arriving in tokens somebody is watching.
+ *
+ * Gated behind holding, unlike the launch alerts: this is somebody else's work being watched on
+ * their behalf, which is the same thing following a creator is, and it is priced the same way.
+ */
+async function traderPass(): Promise<number> {
+  const now = Math.floor(Date.now() / 1000);
+  let sent = 0;
+  for (const hit of pendingTraderAlerts(db, now - FOLLOW_LOOKBACK_SEC)) {
+    if (tierOf(db, hit.chatId) < 1) continue;
+    markTraderSent(db, hit.chatId, hit.token, hit.wallet, now);
+    if (await send(hit.chatId, traderText(db, hit, now), linksFor(hit.token))) sent++;
+    await sleep(1100);
+  }
+  return sent;
+}
 
 /**
  * Says so in the chat when a wallet was proved on the website.
@@ -552,6 +694,15 @@ async function tierSweep(): Promise<void> {
   if (changed) console.log(`${new Date().toISOString().slice(11, 19)}  ${changed} tier change(s)`);
 }
 
+/**
+ * How far back a follow pass looks for launches it has not mentioned.
+ *
+ * Ten minutes rather than one tick, so a bot that was restarted, rate-limited by Telegram, or simply
+ * busy sending does not silently drop the launch somebody was waiting for. Everything inside the
+ * window is checked against the dedupe table, so the only cost of the overlap is the check itself.
+ */
+const FOLLOW_LOOKBACK_SEC = 600;
+
 /** One tick between checking whether the watcher has written anything. */
 const TICK_MS = 1000;
 /**
@@ -566,18 +717,35 @@ const claimCount = (): number =>
 let seen = claimCount();
 let lastFull = 0;
 let lastSweep = 0;
+/**
+ * The score alerts go first, always.
+ *
+ * This loop is strictly serial and every message it sends costs 1.1 seconds of it, because Telegram
+ * allows about one a second to a chat. So the order is a priority order, not a matter of taste: a
+ * burst of follow or trader alerts running ahead of the claims pass would delay the alert a holder
+ * actually pays for, and half of all graduations happen within two minutes of the launch. Everything
+ * slower than that waits behind it.
+ */
 for (;;) {
   try {
-    await announceLinks();
-    if (Date.now() - lastSweep >= CFG.tierRecheckSec * 1000) {
-      lastSweep = Date.now();
-      await tierSweep();
-    }
     const n = claimCount();
     if (n !== seen) {
       seen = n;
       const sent = await claimsPass();
       if (sent) console.log(`${new Date().toISOString().slice(11, 19)}  sent ${sent} alert(s)`);
+    }
+    await announceLinks();
+    {
+      const sent = await followPass();
+      if (sent) console.log(`${new Date().toISOString().slice(11, 19)}  sent ${sent} follow alert(s)`);
+    }
+    {
+      const sent = await traderPass();
+      if (sent) console.log(`${new Date().toISOString().slice(11, 19)}  sent ${sent} trader alert(s)`);
+    }
+    if (Date.now() - lastSweep >= CFG.tierRecheckSec * 1000) {
+      lastSweep = Date.now();
+      await tierSweep();
     }
     if (Date.now() - lastFull >= INTERVAL_SEC * 1000) {
       lastFull = Date.now();

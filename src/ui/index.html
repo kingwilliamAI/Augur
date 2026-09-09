@@ -73,6 +73,8 @@ button{font-family:inherit;border:0;background:none;color:inherit;cursor:pointer
 .links a.on{color:var(--ink);border-bottom-color:var(--lime)}
 .spacer{flex:1}
 .live{display:flex;align-items:center;gap:8px;font:500 11px var(--mono);color:var(--t55);white-space:nowrap}
+.sec a.follow{margin-left:8px;font:500 10.5px var(--mono);color:var(--t55);border:1px solid var(--l12);border-radius:4px;padding:2px 7px;text-decoration:none;white-space:nowrap}
+.sec a.follow:hover{color:var(--lime);border-color:rgba(204,255,0,.45)}
 .wbtn{font-size:12px;padding:7px 12px}
 .wbtn.on{border-color:rgba(204,255,0,.45);color:var(--lime)}
 .lk{max-width:620px;margin:0 auto;padding:56px 0 96px}
@@ -86,6 +88,25 @@ button{font-family:inherit;border:0;background:none;color:inherit;cursor:pointer
 .lk .msg{font:12px var(--mono);color:var(--t55)}
 .lk .msg.bad{color:#ff6b6b}
 .lk .msg.good{color:var(--lime)}
+.pvgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;margin-top:14px}
+.pvgrid label{display:flex;flex-direction:column;gap:5px;font:12px var(--mono);color:var(--t55)}
+.pvgrid label.chk{flex-direction:row;align-items:center;gap:8px}
+.lk input[type=text],.lk input:not([type]),.pvgrid input:not([type=checkbox]){background:var(--bg);border:1px solid var(--l12);border-radius:6px;padding:8px 10px;color:var(--ink);font:13px var(--mono)}
+.pvgrid input:focus,.lk input:focus{outline:none;border-color:rgba(204,255,0,.45)}
+.pvres{border:1px solid var(--l08);border-radius:10px;background:var(--bg2);padding:18px 20px;margin-top:14px}
+.pvres .big{font:600 34px Geist,sans-serif;color:var(--lime);letter-spacing:-.02em}
+.pvres .rank{font:12px var(--mono);color:var(--t55);margin-top:2px}
+.pvres .why{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px}
+.pvres .why span{font:11px var(--mono);border:1px solid var(--l12);border-radius:4px;padding:3px 8px}
+.pvres .why span.up{color:var(--lime);border-color:rgba(204,255,0,.35)}
+.pvres .why span.down{color:#ff8080;border-color:rgba(255,128,128,.3)}
+.pvres .assumed{margin-top:14px;font:11.5px var(--mono);color:var(--t45);line-height:1.7}
+.trrow{display:grid;grid-template-columns:minmax(0,1.4fr) repeat(4,minmax(0,1fr));gap:12px;align-items:center;padding:11px 12px;border-top:1px solid var(--l06);font:12.5px var(--mono)}
+.trrow:first-child{border-top:0}
+.trrow.head{color:var(--t45);font-size:11px;text-transform:none}
+.trrow .w{color:var(--ink);overflow:hidden;text-overflow:ellipsis}
+.trrow .n{text-align:right}
+.trrow .up{color:var(--lime)}
 .dot{width:6px;height:6px;border-radius:50%;background:var(--lime);animation:ps-pulse 1.6s infinite;flex:none}
 .live.warn .dot{background:var(--amber);animation:none}.live.bad .dot{background:var(--red);animation:none}
 .btn{padding:9px 16px;border-radius:6px;background:var(--lime);color:#111;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;line-height:1;border:1px solid var(--lime)}
@@ -608,6 +629,8 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
     <a href="#/model" data-nav="model">Model</a>
     <a href="#/token" data-nav="token">$AUGUR</a>
     <a href="#/roadmap" data-nav="roadmap">Roadmap</a>
+    <a href="#/traders" data-nav="traders">Traders</a>
+    <a href="#/preview" data-nav="preview">Score it</a>
     <a href="#/run" data-nav="run">Run it</a>
     <a href="#/pro" data-nav="pro">Pro</a>
     <a href="https://github.com/kingwilliamAI/Augur" target="_blank" rel="noopener">GitHub</a>
@@ -716,22 +739,26 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <p>Holding $AUGUR opens up the hosted half. Free stays what it is today: alerts arrive a minute after the score is written, API reads are limited per address. A holder proves a wallet by signing a plain sentence: <code>/link</code> in the bot opens a page here that asks the wallet for one signature, which costs no gas, moves nothing and hands over no key. Anyone who would rather not connect a wallet to a page can sign the same sentence anywhere and paste it back. Either way it opens the alert the second the score is written, at any threshold, plus an API key and history exports. Sell below the line and the tier drops; it comes back a week after the balance does. The thresholds are 100,000 $AUGUR for tier 1 and 1,000,000 for tier 2, against a supply of one billion. What tier 2 adds today is a thirty-day export against a seven-day one; the clone alerts and the nightly snapshot it is meant to carry are not written yet.</p>
 
         <h2><span class="n">02</span>Follow a deployer</h2>
-        <p><code>/follow</code> an address in the bot. When that creator launches again you hear about it in the first second, with their record beside it: how many launches, how many reached the pool, the best peak. The card already computes that record; this is the subscription to it.</p>
+        <p><code>/follow</code> an address in the bot, or press <i>follow</i> beside the creator on any card. When that creator launches again you hear about it seconds after the block, with their record beside it: how many launches before this one, how many reached the pool, their best peak. The record excludes the launch it is announcing, because a record that counts the thing it is describing is a mirror.</p>
+        <p>Following is part of the paid half; five creators on tier 1 and no limit above it. One thing beside it is free and stays free: if you have proved a wallet, you are told where your own launches ranked. That is a fact about your token, not a service being sold to you.</p>
 
         <h2><span class="n">03</span>Where the fee goes, live</h2>
         <p>Today the 1.5% creator fee lands in a wallet. The plan is a contract at that address that splits every fee as it arrives: a share to running the board, a share to holders in the quote asset on a schedule, a share to buying $AUGUR back. The $AUGUR page will show the split as it happens, every line linked to its transaction. The recipient can be changed on chain after the fact, so this ships when the contract is written and read, not before.</p>
 
         <h2><span class="n">04</span>Creator tools</h2>
-        <p>Twelve thousand wallets launched something on pons in a single day this month. Before deploying, paste the parameters and get the score and its three reasons. After, an alert saying where the launch ranked against everything else that hour.</p>
+        <p>Twelve thousand wallets launched something on pons in a single day this month. <a href="#/preview">Score it first</a> takes the parameters you intend to deploy with and answers with the score, its three reasons, and where it would rank. Not an approximation of the model: every one of the twenty-three features is either declared by you or read from your own past, so it is the model, asked about a row that does not exist yet.</p>
+        <p>It is free, and deliberately. A tool for somebody deciding whether to spend money on a deploy is worth nothing behind the thing they have not bought. A field left empty stays undeclared rather than becoming a zero, which is what the model sees for the half of real launches whose calldata does not decode, and the answer lists whatever it filled in for you. After the launch, if you have proved that wallet, the bot says where it ranked.</p>
 
         <h2><span class="n">05</span>Where a wallet came from</h2>
         <p>A card says who created a token. It does not say where that wallet's money came from, and every native transfer on the chain is readable, so it can: funded forty-five seconds before the launch, with 0.07 ETH, from an address that has fed other wallets that went on to launch. One case found while measuring had four separate addresses sending to the same wallet, which launched a second later.</p>
         <p>The first version of this was going to be a feed of alerts saying a known creator had just funded a fresh wallet. Over an hour of chain that fired zero times, at every threshold tried: creators do not fund from the wallet they launch from. What does happen is ordinary and frequent, and worth saying plainly because it cuts against the idea: 2.7% of native transfers go to a wallet that launches something afterwards, fifteen of them inside a minute, and one of those hundred and sixteen launches reached a pool against a base rate of two in a hundred. It carries no prediction. So it is a line on the card, not an alert, and never a signal to buy.</p>
+        <p>It only knows what it has watched. Native transfers emit no logs, so this reads whole blocks, and whether a wallet was brand new is a question about state at a past block that no public endpoint here answers more than ten minutes back. There is no backfill and there cannot be one: cards from before the reader started have no line, and that is the honest shape of it rather than a gap to be filled in later.</p>
 
         <h2><span class="n">06</span>Traders in a token you hold</h2>
         <p>When a wallet with a record in the tokens you hold buys into something, the bot says so: which wallet, which token, at what market cap, for how much. Tokens come from a list you keep, or from the wallet you linked in 01.</p>
         <p>Before the pool the chain names the buyer outright, six hundred thousand buys a day, each carrying the wallet that made it. After the pool it stops: the swap event names the router that submitted the trade, and a hundred and fifty routers stand in front of everyone trading. Reading the block puts the name back, which is the same reading 05 needs, so the two are built together.</p>
-        <p>What is not settled is what makes a trader worth following. Realised profit is easy to manufacture with a wallet trading against itself, and so is a win rate. That gets decided before this is written, and printed here when it is.</p>
+        <p>What makes a trader worth following turned out not to be what it looked like. Wash trading is not the threat: a curve has no counterparty to collude with, so a wallet buys from the curve and sells to the curve and pays fees both ways. Access is. Creating the token, or being on the creator's list of wallets waived the 99% opening tax, hands somebody a price rather than letting them find one, and either produces a spectacular return that means nothing.</p>
+        <p>Both are on chain, so both are excluded, per token rather than per wallet: a creator's own launches do not count towards their record and their trades in somebody else's token do. What is left is closed positions only, at least eight of them, with the count printed beside the number so a short run of luck can be discounted rather than trusted. <a href="#/traders">The list is here</a> and it is free to read; what holding buys is being told the moment one of them moves.</p>
 
         <h2><span class="n red">07</span>Never</h2>
         <div class="never">
@@ -806,6 +833,74 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
       Would rather not connect anything? Send <code>/link 0x…</code> to the bot instead and it will
       give you the same sentence to sign wherever you like. Same protocol, same result.
     </p>
+  </div>
+</section>
+
+<section id="page-preview" hidden>
+  <div class="lk">
+    <h1>Score it first</h1>
+    <div class="sub">The same model the board runs, asked about a launch that does not exist yet.</div>
+
+    <div class="step">
+      <h3><span class="n">01</span>Who is deploying</h3>
+      <p>Half of the score is the creator's own record, so the address matters as much as the
+      parameters. Connect a wallet to fill it in, or paste one.</p>
+      <div class="act">
+        <input id="pv-creator" placeholder="0x…" style="flex:1;min-width:260px" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="step">
+      <h3><span class="n">02</span>What you would launch</h3>
+      <p>Leave a field empty and it stays undeclared, which is what the model sees for the half of
+      real launches whose calldata does not decode. Undeclared is not the same as zero, and the
+      answer below says which ones it filled in for you.</p>
+      <div class="pvgrid">
+        <label>Ticker<input id="pv-symbol" placeholder="AUGUR" maxlength="32"></label>
+        <label>Self-buy, in the quote asset<input id="pv-buy" placeholder="0.05" inputmode="decimal"></label>
+        <label>Creator tax, %<input id="pv-tax" placeholder="1.5" inputmode="decimal"></label>
+        <label>Exempt wallets<input id="pv-exempt" placeholder="0" inputmode="numeric"></label>
+        <label>Graduation threshold<input id="pv-threshold" placeholder="4" inputmode="decimal"></label>
+        <label>Quote asset<input id="pv-quote" placeholder="ETH, or a token address"></label>
+        <label>Description<input id="pv-desc" placeholder="what it is" maxlength="500"></label>
+        <label>X / Twitter<input id="pv-twitter" placeholder="https://x.com/…"></label>
+        <label>Website<input id="pv-website" placeholder="https://…"></label>
+        <label class="chk"><input type="checkbox" id="pv-buyback"> Buyback enabled</label>
+      </div>
+      <div class="act">
+        <button class="btn" id="pv-go">Score it</button>
+        <span class="msg" id="pv-msg"></span>
+      </div>
+    </div>
+
+    <div id="pv-out" hidden></div>
+
+    <p style="margin-top:28px;font-size:12.5px;color:var(--t55);line-height:1.7">
+      This is not advice and not a forecast of profit. The backtest in the repository says that
+      following the score does not pay; what it does is rank, and what you are seeing is where these
+      parameters would rank. Nothing here is stored, and nothing is sent anywhere but this board.
+    </p>
+  </div>
+</section>
+
+<section id="page-traders" hidden>
+  <div class="lk" style="max-width:820px">
+    <h1>Wallets with a record</h1>
+    <div class="sub">Closed positions only, in tokens they neither created nor were waived the opening tax on.</div>
+
+    <div class="notyet" id="tr-note"><b>What this is not.</b> It is not a list of people to copy. It
+    counts positions that were opened and closed, excludes a creator's own launches and any token
+    where the creator waived the opening tax for that wallet, and reports the sample size beside the
+    number so you can discount it yourself. A short run of wins is luck.</div>
+
+    <div class="act" style="margin:16px 0">
+      <button class="btn ghost" data-trdays="7">7 days</button>
+      <button class="btn ghost" data-trdays="30">30 days</button>
+      <button class="btn ghost" data-trdays="365">all</button>
+      <span class="msg" id="tr-msg"></span>
+    </div>
+
+    <div id="tr-rows"></div>
   </div>
 </section>
 
@@ -888,7 +983,8 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
     <div class="cols2">
       <div class="prose">
         <h2><span class="n">&middot;</span>The alert bot, today</h2>
-        <p>Open <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a> and send <code>/start</code>. <code>/watch 8</code> sets a floor, and every launch that clears it arrives with its score, its rank and its three reasons, seconds after the block. <code>/token 0x…</code> answers with the card, <code>/top</code> with the highest scoring launches right now, <code>/status</code> with whether the watcher is keeping up, <code>/stop</code> ends it and deletes your record. It is free to everyone today.</p>
+        <p>Open <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a> and send <code>/start</code>. <code>/watch 8</code> sets a floor, and every launch that clears it arrives with its score, its rank and its three reasons, seconds after the block. <code>/token 0x…</code> answers with the card, <code>/top</code> with the highest scoring launches right now, <code>/status</code> with whether the watcher is keeping up, <code>/stop</code> ends it and deletes your record: alerts, follows, watched tokens, everything keyed to that chat.</p>
+        <p>With a proved wallet: <code>/follow 0x…</code> a creator and hear about their next launch, <code>/hold 0x…</code> a token and hear when a wallet with a record buys into it, <code>/trader 0x…</code> for one wallet's closed-position record, <code>/key</code> for an API key. <code>/preview</code> opens the page that scores a launch before you deploy it, and that one is free.</p>
         <p>The same bot runs on your own machine: <code>npm run telegram</code> with a token you create at @BotFather. Either way, what leaves is launch addresses and a number the board computed, both public. No key, no seed, nothing about a wallet. Our copy keeps one row per chat, the threshold and the chat id, and <code>/stop</code> removes it.</p>
         <h2><span class="n">&middot;</span>What comes next</h2>
         <p>Holder tiers, live in this bot. <code>/link</code> opens a page that asks your wallet for one signature, or hands you the sentence to sign elsewhere if you prefer; either way it costs no gas and moves nothing. Holding $AUGUR then opens instant alerts at any threshold, <code>/follow</code> on deployers, an API key and history exports, and free alerts arrive a minute after the score is written. Thresholds are 100,000 $AUGUR for instant alerts and an API key, 1,000,000 for the longer export. A room that acts as the tape for $AUGUR buys is still planned, and still does not exist.</p>
@@ -918,7 +1014,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
   <div class="doc">
     <h1>Pro</h1>
     <div class="sub">The terminal on your machine is free and stays free. Pro is the hosted half.</div>
-    <div class="notyet"><b>Live since 9 September.</b> The board, the card, the model and the prediction log stay free and unchanged. What a tier moves is the alert: free ones arrive a minute after the score is written and above 10%, and a holder's arrive the second it exists, at any threshold. Following a deployer is still not built.</div>
+    <div class="notyet"><b>Live since 9 September.</b> The board, the card, the model and the prediction log stay free and unchanged. What a tier moves is the alert: free ones arrive a minute after the score is written and above 10%, and a holder's arrive the second it exists, at any threshold. Holding also opens following a creator and hearing when a wallet with a record buys into a token you watch.</div>
     <div class="cols2">
       <div class="prose">
         <p>Holding $AUGUR opens the hosted half. Free keeps the board, the bot and the card, with alerts arriving a minute after the score is written and above 10%, and API reads limited per address. A holder gets the alert the second it is written at any threshold, an API key with a real limit, and history exports. Proving the holding is one signature over a plain sentence: no gas, no key, no approval, no transaction, and the wallet can sit anywhere. Sell below the line and the tier drops; it comes back a week after the balance does, which is what stops a tier being borrowed for the one minute an alert is worth.</p>
@@ -929,9 +1025,10 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
           <div class="row2"><b>Tier 1</b><span>100,000 $AUGUR &middot; 0.01%</span></div>
           <div class="row2"><b>Tier 2</b><span>1,000,000 $AUGUR &middot; 0.1%</span></div>
         </div>
-        <p>Tier 1 is the whole product: instant alerts at any threshold, an API key, and seven days
-        of history. Tier 2 today adds one thing, a thirty-day export instead of a seven-day one. The
-        clone alerts and the nightly snapshot it is meant to carry are not written yet, and this page
+        <p>Tier 1 is the whole product: instant alerts at any threshold, an API key, seven days of
+        history, five creators followed, and trader alerts in the tokens you watch. Tier 2 adds a
+        thirty-day export instead of a seven-day one and lifts the limit on following. The clone
+        alerts and the nightly snapshot it is also meant to carry are not written yet, and this page
         will say so until they are.</p>
 
         <h2><span class="n">&middot;</span>How to get a key</h2>
@@ -975,7 +1072,10 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <div class="row2"><b>Alerts, instant, any threshold</b><span>Pro, live</span></div>
         <div class="row2"><b>API key, history exports</b><span>Pro, live</span></div>
         <div class="row2"><b>Holder check</b><span>live</span></div>
-        <div class="row2"><b>Follow a deployer</b><span>Pro, planned</span></div>
+        <div class="row2"><b>Follow a deployer</b><span>Pro, live</span></div>
+        <div class="row2"><b>Trader alerts in a token you hold</b><span>Pro, live</span></div>
+        <div class="row2"><b>Score a launch before deploying</b><span>free, live</span></div>
+        <div class="row2"><b>Fee route, live</b><span>planned</span></div>
       </div>
     </div>
   </div>
@@ -1130,6 +1230,15 @@ const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<
 const short = (a) => a ? a.slice(0, 6) + "…" + a.slice(-4) : "—";
 const pct = (p) => (100 * p).toFixed(1) + "%";
 const EXP = "https://robinhoodchain.blockscout.com";
+const BOT = "https://t.me/AugurRHbot";
+/**
+ * A deep link that finishes its sentence in the bot.
+ *
+ * The site cannot subscribe anybody to anything: the subscription lives in a chat, and only the bot
+ * can see one. Telegram carries up to 64 characters of payload on a /start link, and an address is
+ * 42, so the button here becomes a /follow there without the reader retyping a wallet.
+ */
+const followLink = (address) => BOT + "?start=f_" + address;
 const hhmmss = (ts) => new Date(ts * 1000).toTimeString().slice(0, 8);
 const ago = (ts) => { const s = Math.max(0, Math.floor(Date.now() / 1000) - ts); return s < 90 ? s + "s" : s < 5400 ? Math.round(s / 60) + "m" : (s / 3600).toFixed(1) + "h"; };
 const secs = (s) => s < 90 ? s + " s" : s < 5400 ? Math.round(s / 60) + " min" : (s / 3600).toFixed(1) + " h";
@@ -1186,7 +1295,7 @@ const S = {
 function route() {
   const h = location.hash.replace(/^#\/?/, "");
   const [page, arg] = h.split("/");
-  const PAGES = ["board", "model", "token", "roadmap", "run", "telegram", "pro", "link"];
+  const PAGES = ["board", "model", "token", "roadmap", "run", "telegram", "pro", "link", "preview", "traders"];
   // The link page is reached by a path rather than a hash, because it arrives as a tapped link in a
   // chat and a URL with a #/ in it looks like something went wrong with the message.
   S.page = location.pathname === "/link" ? "link" : PAGES.includes(page) ? page : "home";
@@ -1201,6 +1310,8 @@ function route() {
   if (S.page === "home" || S.page === "roadmap") loadStats();
   if (S.page === "roadmap") layoutRoadmap();
   if (S.page === "link") linkPage();
+  if (S.page === "preview") previewPage();
+  if (S.page === "traders") tradersPage();
   loadFeed();
   window.scrollTo(0, 0);
 }
@@ -1308,7 +1419,7 @@ const ROAD = [
   { tag: "shipped", cls: "done", title: "Hosted, with alerts", d: "this site and @AugurRHbot: same score, our node" },
   { tag: "shipped", cls: "done", title: "Find any token", d: "an address or a ticker, and the card behind it" },
   { tag: "shipped", cls: "done", title: "Holder tiers", d: "the bot and the API, opened by the balance" },
-  { tag: "then", cls: "next", title: "Follow a deployer", d: "their next launch, in the first second" },
+  { tag: "shipped", cls: "done", title: "Follow a deployer", d: "their next launch, seconds after the block" },
   { tag: "then", cls: "next", title: "Fee route, live", d: "a contract that splits the fee, a ledger that shows it" },
 ];
 
@@ -1323,7 +1434,11 @@ const SHIPPED = [
   { t: "$AUGUR · on chain, past the curve", w: "Sep", ok: true },
   { t: "Search · ticker, token or wallet", w: "Sep", ok: true },
   { t: "Holder tiers · /link, /key", w: "Sep", ok: true },
-  { t: "Follow a deployer", w: "not yet", ok: false },
+  { t: "Follow a deployer · /follow", w: "Sep", ok: true },
+  { t: "Score a launch before deploying", w: "Sep", ok: true },
+  { t: "Where a creator's wallet came from", w: "Sep", ok: true },
+  { t: "Traders with a record", w: "Sep", ok: true },
+  { t: "Fee route, live", w: "not yet", ok: false },
 ];
 
 function drawRoadmap() {
@@ -1831,7 +1946,9 @@ function renderCard() {
       ${fact("Name cluster", clusterTxt, C.kind === "repeat-spam" ? "warn" : "")}
       ${fact("Outcome", k.outcome.graduated ? `reached the pool${k.outcome.secondsToGraduate !== null ? " after " + secs(k.outcome.secondsToGraduate) : ""}` : ["on the curve", "swept", "in the pool", "rescued"][k.outcome.phase] || "?", "", k.outcome.graduationTxUrl || "")}
       <div class="soc"><span class="k">Socials</span><span class="b">${hasX ? `<a href="${esc(soc.twitter)}" target="_blank" rel="noopener"><b>𝕏</b>Twitter ↗</a>` : ""}${hasWeb ? `<a href="${esc(soc.website)}" target="_blank" rel="noopener"><b>⌂</b>Website ↗</a>` : ""}${!hasX && !hasWeb ? '<span class="none">none declared</span>' : ""}</span></div>
-      <div class="sec"><span class="k">Creator</span><span class="v">${L.creator ? L.creator : "—"}</span>${L.creator ? `<a href="${A(L.creator)}" target="_blank" rel="noopener">↗</a>` : ""}</div>
+      ${k.origin ? `<div class="sec" title="The last native transfer into the creator's wallet before this launch. It carries no prediction: 2.7% of native transfers precede a launch, and those launches reach a pool no more often than any other."><span class="k">Wallet funded</span><span class="v">${esc(k.origin.eth)} ETH · ${secs(k.origin.secondsBefore)} earlier${k.origin.fresh === true ? " · new wallet" : ""}</span><a href="${k.origin.txUrl}" target="_blank" rel="noopener">↗</a></div>
+      <div class="sec" title="Who sent it, and how many other wallets that address has funded which went on to launch something."><span class="k">Funded by</span><span class="v">${k.origin.fanIn ? `${k.origin.fanIn.funders} addresses · ${esc(k.origin.fanIn.eth)} ETH` : short(k.origin.funder) + (k.origin.funderFedLaunchers > 0 ? ` · fed ${k.origin.funderFedLaunchers} launcher${k.origin.funderFedLaunchers === 1 ? "" : "s"}` : "")}</span><a href="${k.origin.funderUrl}" target="_blank" rel="noopener">↗</a></div>` : ""}
+      <div class="sec"><span class="k">Creator</span><span class="v">${L.creator ? L.creator : "—"}</span>${L.creator ? `<a href="${A(L.creator)}" target="_blank" rel="noopener">↗</a><a class="follow" href="${followLink(L.creator)}" target="_blank" rel="noopener" title="hear about this creator's next launch, in the bot">follow</a>` : ""}</div>
       <div class="stat3"><div><b>${H.priorLaunches}</b><span>launches before</span></div><div class="lime"><b>${H.priorGraduations}</b><span>graduated · ${rate}</span></div>
         <div${H.bestPeak ? ' class="lime"' : ""}><b>${H.bestPeak ? (H.bestPeak.usd ? esc(H.bestPeak.usd) : "×" + H.bestPeak.multiple.toFixed(1)) : "—"}</b><span>${H.bestPeak ? "best peak · " + esc(H.bestPeak.symbol || short(H.bestPeak.token)) : H.unread + (H.unread === 1 ? " curve not read" : " curves not read")}</span></div></div>
       ${bestList}
@@ -2272,6 +2389,138 @@ function linkPage() {
       + " is proved. The bot has already said so in your chat.";
   };
 }
+
+/* ── scoring a launch that does not exist yet ──
+ *
+ * Every field left empty stays undeclared rather than becoming a zero, because the model has a
+ * feature for not knowing and folding one into the other would poison it. The answer says which
+ * fields it filled in for itself, so nobody has to guess which numbers were theirs.
+ */
+let previewDrawn = false;
+function previewPage() {
+  if (previewDrawn) return;
+  previewDrawn = true;
+
+  const el = (id) => $("pv-" + id);
+  // A connected wallet is almost always the wallet about to deploy, so it is offered rather than
+  // demanded: the field stays editable and a paste still wins.
+  W.on((a) => { if (a && !el("creator").value) el("creator").value = a; });
+
+  const num = (id) => {
+    const v = el(id).value.trim();
+    if (!v) return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  };
+  /** Whole units to the smallest unit, as a decimal string. Kept as a string so 18 decimals survive. */
+  const units = (v, decimals) => {
+    if (v === null) return null;
+    const [whole, frac = ""] = String(v).split(".");
+    return (whole + (frac + "0".repeat(decimals)).slice(0, decimals)).replace(/^0+(?=\d)/, "") || "0";
+  };
+
+  el("go").onclick = async () => {
+    const creator = el("creator").value.trim().toLowerCase();
+    const symbol = el("symbol").value.trim();
+    const msg = $("pv-msg");
+    const bad = (t) => { msg.textContent = t; msg.className = "msg bad"; };
+    if (!/^0x[0-9a-f]{40}$/.test(creator)) return bad("a creator address is needed: the record is half the score");
+    if (!symbol) return bad("a ticker is needed, even a placeholder: its length is a feature");
+    msg.textContent = "scoring…"; msg.className = "msg";
+
+    const quoteRaw = el("quote").value.trim().toLowerCase();
+    const quote = /^0x[0-9a-f]{40}$/.test(quoteRaw) ? quoteRaw : "";
+    const tax = num("tax");
+    const body = {
+      creator, symbol,
+      description: el("desc").value.trim() || undefined,
+      quoteToken: quote || undefined,
+      initialBuyWei: el("buy").value.trim() ? units(num("buy"), 18) : undefined,
+      graduationThresholdWei: el("threshold").value.trim() ? units(num("threshold"), 18) : undefined,
+      creatorTaxBps: tax === null ? undefined : Math.round(tax * 100),
+      buybackEnabled: el("buyback").checked,
+      exemptCount: el("exempt").value.trim() ? num("exempt") : undefined,
+      twitter: el("twitter").value.trim() || undefined,
+      website: el("website").value.trim() || undefined,
+    };
+
+    let r, data;
+    try {
+      r = await fetch("/api/preview", {
+        method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+      });
+      data = await r.json();
+    } catch { return bad("the board did not answer"); }
+    if (!r.ok) return bad(data && data.error ? data.error : "that did not score");
+
+    msg.textContent = ""; msg.className = "msg";
+    const pct = (100 * data.probability).toFixed(1) + "%";
+    const better = data.of > 1 ? (100 * (1 - (data.rank - 1) / (data.of - 1))).toFixed(0) : "100";
+    const chips = (data.reasons || []).map((x) =>
+      '<span class="' + esc(x.direction) + '" title="' + esc(x.text || "") + '">' + esc(x.short) + "</span>").join("");
+    const assumed = (data.assumed || []).length
+      ? '<div class="assumed">filled in for you: ' + data.assumed.map(esc).join(" · ") + "</div>" : "";
+    const rec = data.history || {};
+    $("pv-out").hidden = false;
+    $("pv-out").innerHTML =
+      '<div class="pvres"><div class="big">' + pct + "</div>"
+      + '<div class="rank">to reach the pool · #' + data.rank + " of " + n(data.of)
+      + " in the last six hours · better than " + better + "% of them</div>"
+      + '<div class="rank">this creator: ' + n(rec.priorL || 0) + " launches, " + n(rec.priorG || 0)
+      + " reached the pool · " + n(rec.recentCount || 0) + " launches in the last hour chain-wide</div>"
+      + '<div class="why">' + chips + "</div>" + assumed + "</div>";
+  };
+}
+
+/* ── wallets with a record ── */
+let tradersDrawn = false;
+function tradersPage() {
+  if (tradersDrawn) return;
+  tradersDrawn = true;
+  let days = 30;
+
+  const load = async () => {
+    $("tr-msg").textContent = "reading…";
+    let d;
+    try {
+      d = await (await fetch("/api/traders?days=" + days + "&limit=50")).json();
+    } catch { $("tr-msg").textContent = "the board did not answer"; return; }
+    $("tr-msg").textContent = "";
+    const rows = d.traders || [];
+    if (!rows.length) {
+      $("tr-rows").innerHTML = '<div class="trrow"><span class="w">Nobody has closed enough positions yet. '
+        + "The index is built by a sweep that has to run before this list means anything.</span></div>";
+      return;
+    }
+    $("tr-rows").innerHTML =
+      '<div class="trrow head"><span>wallet</span><span class="n">realised</span><span class="n">closed</span>'
+      + '<span class="n">up</span><span class="n">best</span></div>'
+      + rows.map((t) =>
+        '<div class="trrow"><span class="w"><a href="' + EXP + "/address/" + esc(t.wallet)
+        + '" target="_blank" rel="noopener">' + esc(short(t.wallet)) + "</a></span>"
+        + '<span class="n ' + (t.realisedUsd > 0 ? "up" : "") + '">' + usdShort(t.realisedUsd) + "</span>"
+        + '<span class="n">' + t.closed + "</span>"
+        + '<span class="n">' + Math.round(100 * t.winRate) + "%</span>"
+        + '<span class="n">' + t.bestMultiple.toFixed(1) + "x</span></div>").join("");
+  };
+
+  document.querySelectorAll("[data-trdays]").forEach((b) => {
+    b.onclick = () => {
+      days = Number(b.dataset.trdays);
+      document.querySelectorAll("[data-trdays]").forEach((x) => x.classList.toggle("on", x === b));
+      load();
+    };
+  });
+  load();
+}
+
+/** Dollars, short. A leaderboard of exact cents is a leaderboard nobody can scan. */
+const usdShort = (v) => {
+  const n = Number(v) || 0;
+  const s = Math.abs(n) >= 1e6 ? "$" + (n / 1e6).toFixed(1) + "M"
+    : Math.abs(n) >= 1e3 ? "$" + (n / 1e3).toFixed(1) + "K" : "$" + n.toFixed(0);
+  return esc(s);
+};
 
 /* ── copy affordances on the install block ── */
 const allCommands = () => [...document.querySelectorAll("#term .cmd")].map((c) => c.dataset.cmd).join("\n");

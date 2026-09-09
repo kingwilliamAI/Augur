@@ -14,7 +14,7 @@ local · open · no wallet · no key · nothing leaves your machine
 
 <br>
 
-![tests](https://img.shields.io/badge/tests-135%20passing-9ae600?style=flat-square)
+![tests](https://img.shields.io/badge/tests-207%20passing-9ae600?style=flat-square)
 ![models](https://img.shields.io/badge/models-2%20GBDT-9ae600?style=flat-square)
 ![node](https://img.shields.io/badge/node-%E2%89%A522.6-9ae600?style=flat-square)
 ![runtime deps](https://img.shields.io/badge/runtime%20deps-1-9ae600?style=flat-square)
@@ -283,6 +283,8 @@ Nothing here needs a key, because nothing here signs.
 | `train` · `validate` | fit and print held-out metrics · rolling-origin folds |
 | `nightly` | backfill, enrich, retrain, in that order |
 | `telegram` | optional bot, the only part of this project that talks to a third party |
+| `tail` | full block bodies, for native transfers that emit no logs. Forward-only |
+| `traders` | every curve trade on the chain, folded into who has a record |
 
 <br>
 

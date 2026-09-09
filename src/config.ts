@@ -90,6 +90,34 @@ export const CFG = {
    * board is reachable under, so it is told. A local run points at localhost and works the same.
    */
   siteUrl: str("SITE_URL", "https://getaugur.xyz").replace(/\/+$/, ""),
+  /**
+   * How many creators a tier-1 holder may follow. Tier 2 is uncapped.
+   *
+   * A number rather than a principle: five is enough to watch the creators somebody actually cares
+   * about and few enough that the uncapped tier means something.
+   */
+  followLimitTier1: num("FOLLOW_LIMIT_TIER1", 5),
+  /** How long the block tail waits when it has caught up with the head. */
+  tailIdleMs: num("TAIL_IDLE_MS", 400),
+  /** How long it waits after a refused or empty batch. */
+  tailBackoffMs: num("TAIL_BACKOFF_MS", 1500),
+  /**
+   * How far back a funding transfer is still worth checking for freshness.
+   *
+   * Neither public endpoint serves historical state: eth_getTransactionCount and eth_getBalance fail
+   * beyond roughly ten minutes of blocks with "metadata is not found". So a transfer older than this
+   * cannot be told apart from one to an established wallet, and is recorded without that claim
+   * rather than with a guess.
+   */
+  freshWindowBlocks: num("FRESH_WINDOW_BLOCKS", 5000),
+  /**
+   * How many closed positions a wallet needs before its arrival is worth a message.
+   *
+   * Thirty would be a real sample and nobody would qualify in the first week; three would make luck
+   * indistinguishable from judgement. Eight is a compromise, printed beside the number so a reader
+   * can discount it themselves rather than being asked to trust it.
+   */
+  traderMinClosed: num("TRADER_MIN_CLOSED", 8),
 } as const;
 
 /**

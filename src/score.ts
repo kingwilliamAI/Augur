@@ -256,6 +256,41 @@ export function scoreRecent(
 }
 
 /** Scores one launch and places it against the same recent window. */
+/**
+ * The same answer scoreOne gives, for a vector that is not in the database.
+ *
+ * A launch that has not happened has no row to look up, but it has a feature vector: every one of
+ * the twenty-three columns is either declared by whoever is about to deploy or read from their own
+ * past. So the preview is not an approximation of the model, it is the model, asked about a row that
+ * does not exist yet.
+ *
+ * Ranked against the same window a real launch would be ranked against, because "12% is good" means
+ * nothing on its own and "better than nine in ten launches this hour" is the sentence somebody
+ * deciding whether to deploy actually wants.
+ */
+export function scoreVector(
+  db: DB, model: GbdtModel, x: Float64Array, windowHours = 6,
+): Omit<Scored, "token" | "ts"> {
+  const cutoff = Math.floor(Date.now() / 1000) - windowHours * 3600;
+  const c = live();
+  const raw = predict(model, x);
+  const p = corrected(raw, c);
+  const peers = peerScores(dataset(db, cutoff), model, cutoff, windowHours, c);
+  const better = betterThan(peers, p);
+  // The field is one bigger than the window, because this launch is not in it. Ranking against the
+  // window alone produces "18th of 17" for a vector that beats nothing, which reads as a bug and is
+  // really an off-by-one about whether the thing being ranked is counted.
+  const of = peers.length + 1;
+  return {
+    rawProbability: raw,
+    probability: p,
+    rank: better + 1,
+    of,
+    percentile: 100 * (1 - better / Math.max(1, of - 1)),
+    reasons: explain(model, x, 3),
+  };
+}
+
 export function scoreOne(db: DB, model: GbdtModel, token: string, windowHours = 6): Scored | null {
   const cutoff = Math.floor(Date.now() / 1000) - windowHours * 3600;
   const rows = datasetWith(db, token.toLowerCase());

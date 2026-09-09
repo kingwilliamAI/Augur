@@ -279,6 +279,116 @@ CREATE TABLE IF NOT EXISTS api_keys (
 ) STRICT;
 CREATE INDEX IF NOT EXISTS ix_api_keys_chat ON api_keys(chat_id);
 
+-- Creators a chat wants to hear about the moment they launch again.
+--
+-- Keyed on the wallet that sent the launch transaction rather than the deployer the event names,
+-- because that is the address a reader can actually see on a card and the one they mean when they
+-- say "this guy". The two differ on a sixth of launches, and Multicall3 sits in the deployer column
+-- for thousands of launches by thousands of different people; following it would mean following
+-- everybody at once.
+CREATE TABLE IF NOT EXISTS follows (
+  chat_id    INTEGER NOT NULL,
+  address    TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, address)
+) STRICT;
+-- The alert path asks "who is watching this address" on every launch by anybody, so this index is
+-- the difference between a lookup and a scan of every subscription in the table.
+CREATE INDEX IF NOT EXISTS ix_follows_address ON follows(address);
+
+-- One follow alert per launch per chat. Separate from tg_sent on purpose: a score alert and a
+-- follow alert about the same token are different messages answering different questions, and
+-- sharing a dedupe table would silently suppress whichever arrived second.
+CREATE TABLE IF NOT EXISTS tg_follow_sent (
+  chat_id INTEGER NOT NULL,
+  token   TEXT NOT NULL,
+  sent_at INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, token)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_follow_sent_at ON tg_follow_sent(sent_at);
+
+-- Native ETH transfers into wallets that turned out to matter.
+--
+-- Native transfers emit no logs, so these come from full block bodies rather than from eth_getLogs:
+-- the only reader in this project that does. A transfer counts when it carries value and no calldata
+-- at all. That test is not fussiness: every transaction with value is 6.5 per block and almost all
+-- of them are router calls, while value with empty calldata is 0.53 per block, which is the thing a
+-- person means when they say somebody sent somebody money.
+--
+-- Only recipients that have launched or traded are kept. Keeping all 445,000 a day would grow by
+-- about 90 MB a day and answer nothing that is ever asked; keeping the ones attached to a launch is
+-- a few thousand rows and answers the only question there is.
+--
+-- Keyed on the transaction, because the same transfer read twice after a rewind is one fact, while
+-- the same pair funding each other twice is two.
+--
+-- fresh is nullable and that is the honest part: neither public endpoint serves historical state
+-- past roughly ten minutes of blocks, so whether a wallet was brand new is knowable live and not
+-- knowable afterwards. Null means nobody could tell, and the card then says "funded" rather than
+-- "funded a fresh wallet".
+CREATE TABLE IF NOT EXISTS fundings (
+  tx     TEXT PRIMARY KEY,
+  block  INTEGER NOT NULL,
+  ts     INTEGER NOT NULL,
+  funder TEXT NOT NULL,
+  wallet TEXT NOT NULL,
+  wei    TEXT NOT NULL,
+  fresh  INTEGER
+) STRICT;
+-- The card asks "who funded this wallet just before the launch", which is this index exactly.
+CREATE INDEX IF NOT EXISTS ix_fundings_wallet ON fundings(wallet, ts DESC);
+-- And the line beside it asks what else that funder has fed.
+CREATE INDEX IF NOT EXISTS ix_fundings_funder ON fundings(funder);
+
+-- What a wallet has done on curves it did not create, folded rather than stored.
+--
+-- The raw stream is 623,000 buys and 510,000 sells a day chain-wide. At the 490 bytes a curve trade
+-- costs with its indexes that is more than half a gigabyte a day, for rows whose only use is the
+-- three numbers below. So the trades are folded as they are read and never kept.
+--
+-- Positions are per wallet and token, because profit is only meaningful once a position is closed
+-- and closing is per token. quote_in and quote_out are in the launch's own quote asset scaled to
+-- whole units, so ETH and USDG positions can be added up in dollars later without re-reading the
+-- asset each time.
+CREATE TABLE IF NOT EXISTS trader_positions (
+  wallet     TEXT NOT NULL,
+  token      TEXT NOT NULL,
+  quote_in   REAL NOT NULL DEFAULT 0,
+  quote_out  REAL NOT NULL DEFAULT 0,
+  tokens_in  REAL NOT NULL DEFAULT 0,
+  tokens_out REAL NOT NULL DEFAULT 0,
+  buys       INTEGER NOT NULL DEFAULT 0,
+  sells      INTEGER NOT NULL DEFAULT 0,
+  first_ts   INTEGER NOT NULL,
+  last_ts    INTEGER NOT NULL,
+  -- Set when the wallet created this token, or was waived the opening tax on it. Both are ways of
+  -- being early that have nothing to do with judgement, and a ranking that counts them measures
+  -- access rather than skill.
+  insider    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (wallet, token)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_positions_token ON trader_positions(token, last_ts DESC);
+CREATE INDEX IF NOT EXISTS ix_positions_wallet ON trader_positions(wallet);
+
+-- Tokens a chat wants to hear about. Kept by hand, or filled from a proved wallet's own positions.
+CREATE TABLE IF NOT EXISTS tg_holdings (
+  chat_id    INTEGER NOT NULL,
+  token      TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, token)
+) STRICT;
+CREATE INDEX IF NOT EXISTS ix_holdings_token ON tg_holdings(token);
+
+-- One trader alert per chat per token per trader, so a wallet adding to a position does not
+-- re-announce itself on every buy.
+CREATE TABLE IF NOT EXISTS tg_trader_sent (
+  chat_id INTEGER NOT NULL,
+  token   TEXT NOT NULL,
+  wallet  TEXT NOT NULL,
+  sent_at INTEGER NOT NULL,
+  PRIMARY KEY (chat_id, token, wallet)
+) STRICT;
+
 CREATE TABLE IF NOT EXISTS pools (
   token       TEXT PRIMARY KEY,
   pool_id     TEXT NOT NULL,
@@ -453,7 +563,7 @@ export const toEth = (wei: bigint): number => Number(wei) / 1e18;
  * key, so a replay overwrites rather than duplicates, but rows from an orphaned block must go.
  */
 export function rollbackFrom(db: DB, block: number): void {
-  for (const t of ["launches", "graduations", "sweeps", "curve_trades", "fee_events", "fee_recipient_changes"]) {
+  for (const t of ["launches", "graduations", "sweeps", "curve_trades", "fee_events", "fee_recipient_changes", "fundings"]) {
     db.prepare(`DELETE FROM ${t} WHERE block >= ?`).run(block);
   }
   db.prepare("DELETE FROM exemptions WHERE token NOT IN (SELECT token FROM launches)").run();

@@ -1,4 +1,5 @@
 import { EXPLORER } from "./config.ts";
+import { fanIn, originOf } from "./fundings.ts";
 import { formatUnits, quoteFromCache } from "./quote.ts";
 import { curveStats, peakMultiple, type CurveStats } from "./curve.ts";
 import { capsFor, formatUsd, marketCapUsd, startingCapUsd, SUPPLY } from "./prices.ts";
@@ -109,6 +110,23 @@ export type Card = {
     unread: number;
     recent: Array<{ token: string; symbol: string | null; ts: number; graduated: boolean; peakMultiple: number | null; peakUsd: string | null; read: boolean; url: string }>;
   };
+  /**
+   * Where the creator's wallet got its money, shortly before the launch.
+   *
+   * Null on almost every card, and that is expected rather than broken: this comes from a reader that
+   * only knows what it has watched, because whether a wallet was brand new is a question about past
+   * state that no public endpoint here answers more than ten minutes back.
+   *
+   * It carries no prediction and the card must not imply one. Measured over an hour of chain, 2.7% of
+   * native transfers go to a wallet that launches something afterwards, and one launch in a hundred
+   * and sixteen of those reached a pool against a base rate of two in a hundred.
+   */
+  origin: {
+    funder: string; funderUrl: string; tx: string; txUrl: string;
+    eth: string; secondsBefore: number; fresh: boolean | null;
+    funderFedLaunchers: number;
+    fanIn: { funders: number; eth: string } | null;
+  } | null;
 };
 
 
@@ -444,5 +462,42 @@ export function buildCard(db: DB, token: string): Card | null {
         AND token NOT IN (SELECT token FROM curve_indexed)`).get(deployer, l.block) as { c: number }).c,
       recent: history,
     },
+    origin: originFor(db, sender ?? deployer, Number(l.ts)),
+  };
+}
+
+/**
+ * The funding line, or null when nothing was watched.
+ *
+ * Asked about the wallet a reader would call the creator — the launch sender — because that is the
+ * wallet whose money is the interesting question. Falls back to the deployer only when the sender is
+ * unknown, which is the same rule the rest of the card follows.
+ */
+function originFor(db: DB, wallet: string, launchTs: number): Card["origin"] {
+  const o = originOf(db, wallet, launchTs);
+  if (!o) return null;
+  const f = fanIn(db, wallet, launchTs);
+  /**
+   * Enough places that a real transfer never reads as nothing.
+   *
+   * Four places turned a 0.00004 ETH funding into "0", which is not a rounding artefact but a false
+   * statement about whether any money moved. The place count grows for small amounts, the same rule
+   * the quote formatter already uses for exactly this reason.
+   */
+  const eth = (wei: string): string => {
+    const v = Number(BigInt(wei)) / 1e18;
+    const places = v === 0 ? 0 : v >= 1 ? 3 : v >= 0.001 ? 4 : 8;
+    return v.toFixed(places).replace(/\.?0+$/, "") || "0";
+  };
+  return {
+    funder: o.funder,
+    funderUrl: EXPLORER.address(o.funder),
+    tx: o.tx,
+    txUrl: EXPLORER.tx(o.tx),
+    eth: eth(o.wei),
+    secondsBefore: o.secondsBefore,
+    fresh: o.fresh,
+    funderFedLaunchers: o.funderFedLaunchers,
+    fanIn: f ? { funders: f.funders, eth: eth(f.totalWei) } : null,
   };
 }

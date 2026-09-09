@@ -61,7 +61,7 @@ const log1p = (v: number): number => Math.log1p(Math.max(0, v));
 export const normaliseName = (s: string | null): string =>
   (s ?? "").toLowerCase().normalize("NFKD").replace(/[^a-z0-9]/g, "");
 
-type LaunchRow = {
+export type LaunchRow = {
   token: string; deployer: string; launch_sender: string | null; pair_token: string;
   graduation_threshold_wei: string; block: number; ts: number;
   creator_fee_recipient: string | null; creator_tax_bps: number | null; buyback_enabled: number | null;
@@ -94,7 +94,7 @@ export type History = { priorL: number; priorG: number; overlap: number; recentC
  * Pulled out so the full build and the incremental one cannot drift: they compute a row by calling
  * this, rather than by each carrying a copy of the same twenty-three assignments.
  */
-function featureRow(r: LaunchRow, h: History, horizon: number): Row {
+export function featureRow(r: LaunchRow, h: History, horizon: number): Row {
   const socials = (() => {
     try { return JSON.parse(r.socials_json ?? "{}") as Record<string, string>; } catch { return {}; }
   })();
