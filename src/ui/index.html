@@ -609,6 +609,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
     <a href="#/token" data-nav="token">$AUGUR</a>
     <a href="#/roadmap" data-nav="roadmap">Roadmap</a>
     <a href="#/run" data-nav="run">Run it</a>
+    <a href="#/pro" data-nav="pro">Pro</a>
     <a href="https://github.com/kingwilliamAI/Augur" target="_blank" rel="noopener">GitHub</a>
   </div>
   <div class="spacer"></div>
@@ -712,7 +713,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <p>The newest of those is search: the board only ever showed the last six hours, and now the box above the list takes a ticker, a token address or a wallet and opens the card behind any of them, however old. Here is what gets built next, in order, with no dates. Anything marked <b>then</b> above does not exist. If a page on this site ever describes something as working when it is not, that is a bug worth reporting.</p>
 
         <h2><span class="n">01</span>Holder tiers</h2>
-        <p>Holding $AUGUR opens up the hosted half. Free stays what it is today: alerts arrive a minute after the score is written, API reads are limited per address. A holder proves a wallet by signing a plain sentence: <code>/link</code> in the bot opens a page here that asks the wallet for one signature, which costs no gas, moves nothing and hands over no key. Anyone who would rather not connect a wallet to a page can sign the same sentence anywhere and paste it back. Either way it opens the alert the second the score is written, at any threshold, plus an API key and history exports. Sell below the line and the tier drops; it comes back a week after the balance does. The thresholds are set when this ships and will be printed here.</p>
+        <p>Holding $AUGUR opens up the hosted half. Free stays what it is today: alerts arrive a minute after the score is written, API reads are limited per address. A holder proves a wallet by signing a plain sentence: <code>/link</code> in the bot opens a page here that asks the wallet for one signature, which costs no gas, moves nothing and hands over no key. Anyone who would rather not connect a wallet to a page can sign the same sentence anywhere and paste it back. Either way it opens the alert the second the score is written, at any threshold, plus an API key and history exports. Sell below the line and the tier drops; it comes back a week after the balance does. The thresholds are 100,000 $AUGUR for tier 1 and 1,000,000 for tier 2, against a supply of one billion. What tier 2 adds today is a thirty-day export against a seven-day one; the clone alerts and the nightly snapshot it is meant to carry are not written yet.</p>
 
         <h2><span class="n">02</span>Follow a deployer</h2>
         <p><code>/follow</code> an address in the bot. When that creator launches again you hear about it in the first second, with their record beside it: how many launches, how many reached the pool, the best peak. The card already computes that record; this is the subscription to it.</p>
@@ -890,7 +891,7 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <p>Open <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a> and send <code>/start</code>. <code>/watch 8</code> sets a floor, and every launch that clears it arrives with its score, its rank and its three reasons, seconds after the block. <code>/token 0x…</code> answers with the card, <code>/top</code> with the highest scoring launches right now, <code>/status</code> with whether the watcher is keeping up, <code>/stop</code> ends it and deletes your record. It is free to everyone today.</p>
         <p>The same bot runs on your own machine: <code>npm run telegram</code> with a token you create at @BotFather. Either way, what leaves is launch addresses and a number the board computed, both public. No key, no seed, nothing about a wallet. Our copy keeps one row per chat, the threshold and the chat id, and <code>/stop</code> removes it.</p>
         <h2><span class="n">&middot;</span>What comes next</h2>
-        <p>Holder tiers, in this bot. <code>/link</code> opens a page that asks your wallet for one signature, or hands you the sentence to sign elsewhere if you prefer; either way it costs no gas and moves nothing. Holding $AUGUR then opens instant alerts at any threshold, <code>/follow</code> on deployers, an API key and history exports, and free alerts arrive a minute after the score is written. Thresholds are set when it ships and printed on the roadmap. A room that acts as the tape for $AUGUR buys is still planned, and still does not exist.</p>
+        <p>Holder tiers, live in this bot. <code>/link</code> opens a page that asks your wallet for one signature, or hands you the sentence to sign elsewhere if you prefer; either way it costs no gas and moves nothing. Holding $AUGUR then opens instant alerts at any threshold, <code>/follow</code> on deployers, an API key and history exports, and free alerts arrive a minute after the score is written. Thresholds are 100,000 $AUGUR for instant alerts and an API key, 1,000,000 for the longer export. A room that acts as the tape for $AUGUR buys is still planned, and still does not exist.</p>
         <h2><span class="n red">&middot;</span>What the bot will never do</h2>
         <div class="never">
           <div><i>x</i><span>Never asks for a key, a seed phrase or an approval.</span></div>
@@ -917,10 +918,49 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
   <div class="doc">
     <h1>Pro</h1>
     <div class="sub">The terminal on your machine is free and stays free. Pro is the hosted half.</div>
-    <div class="notyet"><b>Tiers are not built yet.</b> The hosted board and the alert bot are live and free to everyone, and there is nothing to sign or unlock today. This page is here so the terms are visible before any of it exists.</div>
+    <div class="notyet"><b>Live since 9 September.</b> The board, the card, the model and the prediction log stay free and unchanged. What a tier moves is the alert: free ones arrive a minute after the score is written and above 10%, and a holder's arrive the second it exists, at any threshold. Following a deployer is still not built.</div>
     <div class="cols2">
       <div class="prose">
-        <p>Holding $AUGUR will open the hosted half up. Free keeps the board, the bot and the card, with alerts arriving a minute after the score is written and API reads limited per address. A holder gets the alert the second it is written at any threshold, follows on deployers, an API key with a real limit, and history exports. Proving the holding is one signature over a plain sentence: no gas, no key, no approval, no transaction, and the wallet can sit anywhere. Sell below the line and the tier drops; it comes back a week after the balance does.</p>
+        <p>Holding $AUGUR opens the hosted half. Free keeps the board, the bot and the card, with alerts arriving a minute after the score is written and above 10%, and API reads limited per address. A holder gets the alert the second it is written at any threshold, an API key with a real limit, and history exports. Proving the holding is one signature over a plain sentence: no gas, no key, no approval, no transaction, and the wallet can sit anywhere. Sell below the line and the tier drops; it comes back a week after the balance does, which is what stops a tier being borrowed for the one minute an alert is worth.</p>
+
+        <h2><span class="n">&middot;</span>The thresholds</h2>
+        <p>Supply is one billion, and these were promised here rather than left to be discovered:</p>
+        <div class="side" style="margin-top:14px">
+          <div class="row2"><b>Tier 1</b><span>100,000 $AUGUR &middot; 0.01%</span></div>
+          <div class="row2"><b>Tier 2</b><span>1,000,000 $AUGUR &middot; 0.1%</span></div>
+        </div>
+        <p>Tier 1 is the whole product: instant alerts at any threshold, an API key, and seven days
+        of history. Tier 2 today adds one thing, a thirty-day export instead of a seven-day one. The
+        clone alerts and the nightly snapshot it is meant to carry are not written yet, and this page
+        will say so until they are.</p>
+
+        <h2><span class="n">&middot;</span>How to get a key</h2>
+        <p>The key belongs to a proved wallet, and the proving happens in the bot, so that is where
+        it is handed over. Three steps, none of which costs gas:</p>
+        <div class="steps">
+          <div class="stp">
+            <div class="hd"><span class="n">01</span><b>Open the bot</b></div>
+            <div class="d">Send <code>/link</code> to <a href="https://t.me/AugurRHbot" target="_blank" rel="noopener">@AugurRHbot</a>. It replies with a button.</div>
+          </div>
+          <div class="stp">
+            <div class="hd"><span class="n">02</span><b>Sign once</b></div>
+            <div class="d">The button opens a page here that asks your wallet for one signature over a sentence naming that wallet. Nothing reaches the chain. Would rather not connect a wallet to a page? <code>/link 0x…</code> hands you the same sentence to sign anywhere, and <code>/verify 0x…</code> takes it back.</div>
+          </div>
+          <div class="stp">
+            <div class="hd"><span class="n">03</span><b>Ask for the key</b></div>
+            <div class="d">Send <code>/key</code>. It replaces any key you had; <code>/unlink</code> revokes the wallet, the tier and the key together.</div>
+          </div>
+        </div>
+
+        <h2><span class="n">&middot;</span>What the key opens</h2>
+        <p>Send it as an <code>x-api-key</code> header, or as <code>?key=</code> when a header is not
+        possible. It raises the limit from 240 requests a minute per address to 2,000 a minute for
+        the key, counted on its own rather than shared with everyone behind the same address.</p>
+        <div class="cmd"><span class="txt"><code>curl -H "x-api-key: augur_…" https://getaugur.xyz/api/export?days=7</code></span></div>
+        <p>The export is the prediction log: every claim this machine made, with the launch behind
+        it and the outcome once there is one. Seven days on tier 1, thirty on tier 2. That is the
+        part of this that cannot be rebuilt from the chain by anyone else, because the chain does not
+        record what was thought about a launch before its outcome existed.</p>
         <p>What is not for sale is a result. The backtest in the repository says that following the score does not pay, and nothing on this page claims otherwise. Pro is the server, the history and the speed, not an edge.</p>
         <h2><span class="n">&middot;</span>What stays free, always</h2>
         <p>Everything you are looking at. The board, the card behind every launch, the model and its validation, the prediction log. You run it yourself, it talks to a public RPC and nothing else, and the score you compute is the score the hosted site shows. That is the point of it being open, and Pro does not change it.</p>
@@ -931,11 +971,11 @@ h2{margin:0;font:700 26px Geist,sans-serif;letter-spacing:-.02em}
         <div class="row2"><b>Full card and model</b><span>free, always</span></div>
         <div class="row2"><b>Prediction log</b><span>free, always</span></div>
         <div class="row2"><b>Hosted board</b><span>free, live</span></div>
-        <div class="row2"><b>Alerts</b><span>free today, a minute late once tiers ship</span></div>
-        <div class="row2"><b>Alerts, instant, any threshold</b><span>Pro, planned</span></div>
+        <div class="row2"><b>Alerts</b><span>free, a minute late, above 10%</span></div>
+        <div class="row2"><b>Alerts, instant, any threshold</b><span>Pro, live</span></div>
+        <div class="row2"><b>API key, history exports</b><span>Pro, live</span></div>
+        <div class="row2"><b>Holder check</b><span>live</span></div>
         <div class="row2"><b>Follow a deployer</b><span>Pro, planned</span></div>
-        <div class="row2"><b>API key, history exports</b><span>Pro, planned</span></div>
-        <div class="row2"><b>Holder check</b><span>next</span></div>
       </div>
     </div>
   </div>
@@ -1267,7 +1307,7 @@ const ROAD = [
   { tag: "shipped", cls: "done", title: "The card", d: "creator, self-buy, exempt wallets, fee route, their history" },
   { tag: "shipped", cls: "done", title: "Hosted, with alerts", d: "this site and @AugurRHbot: same score, our node" },
   { tag: "shipped", cls: "done", title: "Find any token", d: "an address or a ticker, and the card behind it" },
-  { tag: "then", cls: "next", title: "Holder tiers", d: "the bot and the API, opened by the balance" },
+  { tag: "shipped", cls: "done", title: "Holder tiers", d: "the bot and the API, opened by the balance" },
   { tag: "then", cls: "next", title: "Follow a deployer", d: "their next launch, in the first second" },
   { tag: "then", cls: "next", title: "Fee route, live", d: "a contract that splits the fee, a ledger that shows it" },
 ];
@@ -1282,7 +1322,8 @@ const SHIPPED = [
   { t: "Alert bot · @AugurRHbot", w: "Sep", ok: true },
   { t: "$AUGUR · on chain, past the curve", w: "Sep", ok: true },
   { t: "Search · ticker, token or wallet", w: "Sep", ok: true },
-  { t: "Holder tiers", w: "not yet", ok: false },
+  { t: "Holder tiers · /link, /key", w: "Sep", ok: true },
+  { t: "Follow a deployer", w: "not yet", ok: false },
 ];
 
 function drawRoadmap() {
